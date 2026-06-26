@@ -29,6 +29,22 @@
     return match ? match[1] : text.replace(/[^A-Za-z0-9]/g, '');
   }
 
+  function parseInviteLikeInput(value) {
+    const text = String(value || '').trim();
+    if (!text) return null;
+    try {
+      const url = new URL(text);
+      const params = url.searchParams;
+      return {
+        placeId: normalizePlaceId(params.get('placeId')),
+        instanceId: normalizeInstanceId(params.get('gameInstanceId') || params.get('jobId')),
+        privateCode: normalizePrivateCode(params.get('privateCode') || params.get('linkCode') || params.get('privateServerCode') || params.get('privateServerLink') || params.get('code'))
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
   function buildDeepLink(placeId, instanceId) {
     return 'roblox://placeId=' + encodeURIComponent(placeId) + '&gameInstanceId=' + encodeURIComponent(instanceId);
   }
@@ -84,9 +100,9 @@
     const mode = privateCode ? 'private' : 'public';
     const jobValue = byId('job-id');
     const placeValue = byId('place-id');
+    const placeLabel = byId('place-label');
     const jobLabel = byId('job-label');
     const openApp = byId('open-app');
-    const copyJob = byId('copy-job');
     const openWeb = byId('open-web');
     const description = byId('invite-description');
     const deepLink = mode === 'private'
@@ -110,8 +126,12 @@
       return;
     }
 
-    if (jobValue) jobValue.textContent = instanceId;
-    if (placeValue) placeValue.textContent = placeId || 'Not required for this private link';
+    if (placeLabel) {
+      placeLabel.textContent = mode === 'private' ? 'Private Server' : 'Place ID';
+    }
+    if (placeValue) {
+      placeValue.textContent = mode === 'private' ? 'Share-code join' : placeId;
+    }
     if (openWeb) openWeb.href = webLink;
     if (description) {
       description.textContent = mode === 'private'
@@ -138,9 +158,6 @@
     }
 
     openApp && openApp.addEventListener('click', openRoblox);
-    copyJob && copyJob.addEventListener('click', function () {
-      copyText(mode === 'private' ? privateCode : (instanceId || placeId), mode === 'private' ? 'Private server code copied.' : instanceId ? 'Job ID copied.' : 'Place ID copied.');
-    });
 
     setStatus('Trying Roblox app first. If nothing opens, use the buttons above.');
     window.setTimeout(openRoblox, 250);
@@ -148,8 +165,10 @@
 
   function initMenuPage() {
     const modeInputs = document.querySelectorAll('input[name="joinType"]');
+    const placeField = byId('place-field');
     const placeInput = byId('placeId');
     const instanceInput = byId('gameInstanceId');
+    const inviteLinkInput = byId('inviteLink');
     const privateInput = byId('privateCode');
     const publicFields = byId('public-fields');
     const privateFields = byId('private-fields');
@@ -199,11 +218,31 @@
 
     function syncModeUi() {
       const mode = getMode();
+      if (placeField) placeField.classList.toggle('hidden', mode === 'private');
       if (publicFields) publicFields.classList.toggle('hidden', mode !== 'public');
       if (privateFields) privateFields.classList.toggle('hidden', mode !== 'private');
     }
 
+    function absorbInviteLink() {
+      const parsed = parseInviteLikeInput(inviteLinkInput && inviteLinkInput.value);
+      if (!parsed) return;
+      if (parsed.privateCode) {
+        const privateRadio = document.querySelector('input[name="joinType"][value="private"]');
+        if (privateRadio) privateRadio.checked = true;
+        if (privateInput) privateInput.value = parsed.privateCode;
+        if (placeInput && parsed.placeId) placeInput.value = parsed.placeId;
+        return;
+      }
+      if (parsed.placeId || parsed.instanceId) {
+        const publicRadio = document.querySelector('input[name="joinType"][value="public"]');
+        if (publicRadio) publicRadio.checked = true;
+        if (placeInput && parsed.placeId) placeInput.value = parsed.placeId;
+        if (instanceInput && parsed.instanceId) instanceInput.value = parsed.instanceId;
+      }
+    }
+
     function refresh() {
+      absorbInviteLink();
       syncModeUi();
       const mode = getMode();
       const url = makeUrl();
@@ -224,6 +263,7 @@
     modeInputs.forEach(function (input) {
       input.addEventListener('change', refresh);
     });
+    inviteLinkInput && inviteLinkInput.addEventListener('input', refresh);
     placeInput && placeInput.addEventListener('input', refresh);
     instanceInput && instanceInput.addEventListener('input', refresh);
     privateInput && privateInput.addEventListener('input', refresh);
