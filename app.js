@@ -99,6 +99,7 @@
     const privateCode = normalizePrivateCode(params.get('privateCode') || params.get('linkCode') || params.get('privateServerCode') || params.get('privateServerLink'));
     const mode = privateCode ? 'private' : 'public';
     const jobValue = byId('job-id');
+    const placeBlock = byId('place-block');
     const placeValue = byId('place-id');
     const placeLabel = byId('place-label');
     const jobLabel = byId('job-label');
@@ -129,8 +130,11 @@
     if (placeLabel) {
       placeLabel.textContent = mode === 'private' ? 'Private Server' : 'Place ID';
     }
+    if (placeBlock) {
+      placeBlock.classList.toggle('hidden', mode === 'private');
+    }
     if (placeValue) {
-      placeValue.textContent = mode === 'private' ? 'Share-code join' : placeId;
+      placeValue.textContent = placeId;
     }
     if (openWeb) openWeb.href = webLink;
     if (description) {
@@ -166,6 +170,7 @@
   function initMenuPage() {
     const modeInputs = document.querySelectorAll('input[name="joinType"]');
     const placeField = byId('place-field');
+    const inviteLinkField = byId('invite-link-field');
     const placeInput = byId('placeId');
     const instanceInput = byId('gameInstanceId');
     const inviteLinkInput = byId('inviteLink');
@@ -219,6 +224,7 @@
     function syncModeUi() {
       const mode = getMode();
       if (placeField) placeField.classList.toggle('hidden', mode === 'private');
+      if (inviteLinkField) inviteLinkField.classList.toggle('hidden', mode !== 'public');
       if (publicFields) publicFields.classList.toggle('hidden', mode !== 'public');
       if (privateFields) privateFields.classList.toggle('hidden', mode !== 'private');
     }
