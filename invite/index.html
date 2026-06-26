@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Join Roblox Server</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body data-page="invite">
+  <main class="page">
+    <section class="card">
+      <div id="ready-state">
+        <h1>Join Server</h1>
+        <p>Tap the button below to open the Roblox app for this exact server on desktop or mobile. If Roblox does not launch, use the fallback web button.</p>
+        <div class="buttons">
+          <button class="button" id="open-app">Open Roblox App</button>
+          <button class="button secondary" id="copy-job">Copy Job ID</button>
+          <a class="button secondary" id="open-web" href="#">Open Roblox Web Page</a>
+          <a class="button secondary" href="../menu/">Open Menu</a>
+        </div>
+        <p><strong>Place ID</strong></p>
+        <code id="place-id"></code>
+        <p><strong>Server Job ID</strong></p>
+        <code id="job-id"></code>
+      </div>
+
+      <div id="missing-state" hidden>
+        <h1>Missing Invite Data</h1>
+        <p>This page expects a Roblox invite URL in the format below.</p>
+        <code>./invite/?placeId=606849621&amp;gameInstanceId=b7b55207-ab2f-4b62-acd7-7f5962b13a26</code>
+        <div class="buttons">
+          <a class="button" href="../menu/">Open Menu</a>
+        </div>
+      </div>
+
+      <p class="small status" id="status">Preparing invite…</p>
+    </section>
+  </main>
+  <script src="../app.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Joiner Menu</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body data-page="menu">
+  <main class="page">
+    <section class="card">
+      <h1>Joiner Menu</h1>
+      <p>Paste a Roblox <strong>place ID</strong> and <strong>game instance ID</strong> below to generate a Froststrap-style invite link.</p>
+
+      <div class="stack">
+        <div class="field">
+          <label for="placeId">Place ID</label>
+          <input id="placeId" inputmode="numeric" placeholder="606849621" />
+        </div>
+
+        <div class="field">
+          <label for="gameInstanceId">Game Instance ID</label>
+          <input id="gameInstanceId" placeholder="b7b55207-ab2f-4b62-acd7-7f5962b13a26" />
+        </div>
+      </div>
+
+      <div class="buttons">
+        <button class="button" id="launch-invite">Open Invite Page</button>
+        <button class="button secondary" id="copy-link">Copy Invite Link</button>
+      </div>
+
+      <p><strong>Generated invite link</strong></p>
+      <div class="code-block" id="generated-link">Fill in both fields to generate an invite link.</div>
+
+      <div class="divider"></div>
+
+      <p class="small">Direct format: <code>../invite/?placeId=PLACE_ID&amp;gameInstanceId=INSTANCE_ID</code></p>
+      <p class="small status" id="status">Enter a place ID and a game instance ID.</p>
+    </section>
+  </main>
+  <script src="../app.js"></script>
+</body>
+</html>

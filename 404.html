@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Joiner</title>
+  <script>
+    const path = window.location.pathname || '/';
+    const search = window.location.search || '';
+    const hash = window.location.hash || '';
+    const normalized = path.endsWith('/') ? path : path + '/';
+    const known = ['/invite/', '/menu/'];
+    const target = known.includes(normalized) ? normalized : '/menu/';
+    window.location.replace(target + search + hash);
+  </script>
+</head>
+<body>
+  <p>Redirecting…</p>
+</body>
+</html>
