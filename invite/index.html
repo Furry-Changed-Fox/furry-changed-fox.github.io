@@ -11,7 +11,7 @@
     <section class="card">
       <div id="ready-state">
         <h1>Join Server</h1>
-        <p>Tap the button below to open the Roblox app for this exact server on desktop or mobile. If Roblox does not launch, use the fallback web button.</p>
+        <p id="invite-description">Tap the button below to open the Roblox app for this exact server on desktop or mobile. If Roblox does not launch, use the fallback web button.</p>
         <div class="buttons">
           <button class="button" id="open-app">Open Roblox App</button>
           <button class="button secondary" id="copy-job">Copy Job ID</button>
@@ -20,13 +20,13 @@
         </div>
         <p><strong>Place ID</strong></p>
         <code id="place-id"></code>
-        <p><strong>Server Job ID</strong></p>
+        <p><strong id="job-label">Server Job ID</strong></p>
         <code id="job-id"></code>
       </div>
 
       <div id="missing-state" hidden>
         <h1>Missing Invite Data</h1>
-        <p>This page expects a Roblox invite URL in the format below.</p>
+        <p>This page needs a valid place ID, plus either a public game instance ID or a private server code.</p>
         <code>./invite/?placeId=606849621&amp;gameInstanceId=b7b55207-ab2f-4b62-acd7-7f5962b13a26</code>
         <div class="buttons">
           <a class="button" href="../menu/">Open Menu</a>

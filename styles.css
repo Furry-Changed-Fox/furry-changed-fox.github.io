@@ -97,6 +97,46 @@ button.button:disabled {
   margin: 18px 0;
 }
 
+.toggle-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 8px;
+}
+
+.toggle-option {
+  position: relative;
+}
+
+.toggle-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-option span {
+  display: block;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  border-radius: 12px;
+  padding: 13px 14px;
+  text-align: center;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toggle-option input:checked + span {
+  background: rgba(88, 101, 242, .18);
+  border-color: var(--accent-2);
+  color: var(--text);
+  box-shadow: 0 0 0 3px rgba(88, 101, 242, .14);
+}
+
+.hidden {
+  display: none !important;
+}
+
 .field {
   display: grid;
   gap: 8px;

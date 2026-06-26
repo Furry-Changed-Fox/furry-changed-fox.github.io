@@ -10,7 +10,18 @@
   <main class="page">
     <section class="card">
       <h1>Joiner Menu</h1>
-      <p>Paste a Roblox <strong>place ID</strong> and <strong>game instance ID</strong> below to generate a Froststrap-style invite link.</p>
+      <p>Choose whether you want a <strong>public</strong> or <strong>private</strong> join link, then fill in the needed Roblox info below.</p>
+
+      <div class="toggle-row" role="radiogroup" aria-label="Join type">
+        <label class="toggle-option">
+          <input type="radio" name="joinType" value="public" checked />
+          <span>Public Server</span>
+        </label>
+        <label class="toggle-option">
+          <input type="radio" name="joinType" value="private" />
+          <span>Private Server</span>
+        </label>
+      </div>
 
       <div class="stack">
         <div class="field">
@@ -18,24 +29,29 @@
           <input id="placeId" inputmode="numeric" placeholder="606849621" />
         </div>
 
-        <div class="field">
-          <label for="gameInstanceId">Game Instance ID</label>
-          <input id="gameInstanceId" placeholder="b7b55207-ab2f-4b62-acd7-7f5962b13a26" />
+        <div id="public-fields">
+          <div class="field">
+            <label for="gameInstanceId">Game Instance ID <span class="small">(optional)</span></label>
+            <input id="gameInstanceId" placeholder="b7b55207-ab2f-4b62-acd7-7f5962b13a26" />
+          </div>
+        </div>
+
+        <div id="private-fields" class="hidden">
+          <div class="field">
+            <label for="privateCode">Private Server Share Link or Code</label>
+            <input id="privateCode" placeholder="https://www.roblox.com/share?code=...&type=Server" />
+          </div>
         </div>
       </div>
 
       <div class="buttons">
-        <button class="button" id="launch-invite">Open Invite Page</button>
-        <button class="button secondary" id="copy-link">Copy Invite Link</button>
+        <button class="button" id="launch-invite">Join Server</button>
+        <button class="button secondary" id="copy-link">Copy Join Link</button>
       </div>
 
-      <p><strong>Generated invite link</strong></p>
-      <div class="code-block" id="generated-link">Fill in both fields to generate an invite link.</div>
-
-      <div class="divider"></div>
-
-      <p class="small">Direct format: <code>../invite/?placeId=PLACE_ID&amp;gameInstanceId=INSTANCE_ID</code></p>
-      <p class="small status" id="status">Enter a place ID and a game instance ID.</p>
+      <p><strong>Generated join link</strong></p>
+      <div class="code-block" id="generated-link">Fill in the required fields to generate a join link.</div>
+      <p class="small status" id="status">Enter a place ID. Game instance ID is optional for public joins.</p>
     </section>
   </main>
   <script src="../app.js"></script>

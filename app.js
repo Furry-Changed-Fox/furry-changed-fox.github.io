@@ -23,12 +23,35 @@
     return String(value || '').trim();
   }
 
+  function normalizePrivateCode(value) {
+    const text = String(value || '').trim();
+    const match = text.match(/[?&]code=([A-Za-z0-9]+)/i);
+    return match ? match[1] : text.replace(/[^A-Za-z0-9]/g, '');
+  }
+
   function buildDeepLink(placeId, instanceId) {
     return 'roblox://placeId=' + encodeURIComponent(placeId) + '&gameInstanceId=' + encodeURIComponent(instanceId);
   }
 
+  function buildPlaceLink(placeId) {
+    return 'roblox://placeId=' + encodeURIComponent(placeId);
+  }
+
+  function buildPrivateLink(placeId, privateCode) {
+    if (!placeId || !privateCode) return '';
+    return 'roblox://placeId=' + encodeURIComponent(placeId) + '&linkCode=' + encodeURIComponent(privateCode);
+  }
+
   function buildWebLink(placeId, instanceId) {
     return 'https://www.roblox.com/games/' + encodeURIComponent(placeId) + '/?gameInstanceId=' + encodeURIComponent(instanceId);
+  }
+
+  function buildPlaceWebLink(placeId) {
+    return 'https://www.roblox.com/games/' + encodeURIComponent(placeId) + '/';
+  }
+
+  function buildPrivateWebLink(privateCode) {
+    return 'https://www.roblox.com/share?code=' + encodeURIComponent(privateCode) + '&type=Server';
   }
 
   async function copyText(text, successLabel) {
@@ -52,28 +75,67 @@
   }
 
   function initInvitePage() {
-    const placeId = normalizePlaceId(getParams().get('placeId'));
-    const instanceId = normalizeInstanceId(getParams().get('gameInstanceId') || getParams().get('jobId'));
+    const params = getParams();
+    const placeId = normalizePlaceId(params.get('placeId'));
+    const instanceId = normalizeInstanceId(params.get('gameInstanceId') || params.get('jobId'));
+    const privateCode = normalizePrivateCode(params.get('privateCode') || params.get('linkCode') || params.get('privateServerCode') || params.get('privateServerLink'));
+    const mode = privateCode ? 'private' : 'public';
     const jobValue = byId('job-id');
     const placeValue = byId('place-id');
+    const jobLabel = byId('job-label');
     const openApp = byId('open-app');
     const copyJob = byId('copy-job');
     const openWeb = byId('open-web');
     const missingState = byId('missing-state');
     const readyState = byId('ready-state');
-    const deepLink = placeId && instanceId ? buildDeepLink(placeId, instanceId) : '';
-    const webLink = placeId && instanceId ? buildWebLink(placeId, instanceId) : '';
+    const description = byId('invite-description');
+    const deepLink = mode === 'private'
+      ? buildPrivateLink(placeId, privateCode)
+      : instanceId
+        ? buildDeepLink(placeId, instanceId)
+        : buildPlaceLink(placeId);
+    const webLink = mode === 'private'
+      ? buildPrivateWebLink(privateCode)
+      : instanceId
+        ? buildWebLink(placeId, instanceId)
+        : buildPlaceWebLink(placeId);
 
-    if (!placeId || !instanceId) {
+    if (!placeId && mode !== 'private') {
       if (missingState) missingState.hidden = false;
       if (readyState) readyState.hidden = true;
-      setStatus('Missing placeId or gameInstanceId in the URL.', 'error');
+      setStatus('Missing placeId in the URL.', 'error');
+      return;
+    }
+
+    if (mode === 'private' && (!placeId || !privateCode)) {
+      if (missingState) missingState.hidden = false;
+      if (readyState) readyState.hidden = true;
+      setStatus('Missing placeId or private server code in the URL.', 'error');
       return;
     }
 
     if (jobValue) jobValue.textContent = instanceId;
     if (placeValue) placeValue.textContent = placeId;
     if (openWeb) openWeb.href = webLink;
+    if (description) {
+      description.textContent = mode === 'private'
+        ? 'Tap the button below to open Roblox for this private server. If the app does not launch, use the fallback web button.'
+        : instanceId
+          ? 'Tap the button below to open the Roblox app for this exact server on desktop or mobile. If Roblox does not launch, use the fallback web button.'
+          : 'Tap the button below to open Roblox for this place. If Roblox does not launch, use the fallback web button.';
+    }
+    if (jobLabel) {
+      jobLabel.textContent = mode === 'private'
+        ? 'Private Server Code'
+        : instanceId
+          ? 'Server Job ID'
+          : 'Join Type';
+    }
+    if (jobValue) {
+      jobValue.textContent = mode === 'private'
+        ? privateCode
+        : instanceId || 'Public place join';
+    }
 
     function openRoblox() {
       window.location.href = deepLink;
@@ -81,7 +143,7 @@
 
     openApp && openApp.addEventListener('click', openRoblox);
     copyJob && copyJob.addEventListener('click', function () {
-      copyText(instanceId, 'Job ID copied.');
+      copyText(mode === 'private' ? privateCode : (instanceId || placeId), mode === 'private' ? 'Private server code copied.' : instanceId ? 'Job ID copied.' : 'Place ID copied.');
     });
 
     setStatus('Trying Roblox app first. If nothing opens, use the buttons above.');
@@ -89,32 +151,69 @@
   }
 
   function initMenuPage() {
+    const modeInputs = document.querySelectorAll('input[name="joinType"]');
     const placeInput = byId('placeId');
     const instanceInput = byId('gameInstanceId');
+    const privateInput = byId('privateCode');
+    const publicFields = byId('public-fields');
+    const privateFields = byId('private-fields');
     const launchButton = byId('launch-invite');
     const copyLinkButton = byId('copy-link');
     const output = byId('generated-link');
 
+    function getMode() {
+      const checked = document.querySelector('input[name="joinType"]:checked');
+      return checked ? checked.value : 'public';
+    }
+
     function makeUrl() {
+      const mode = getMode();
       const placeId = normalizePlaceId(placeInput && placeInput.value);
       const instanceId = normalizeInstanceId(instanceInput && instanceInput.value);
-      if (!placeId || !instanceId) return '';
+      const privateCode = normalizePrivateCode(privateInput && privateInput.value);
       const url = new URL('../invite/', window.location.href);
+      if (mode === 'private') {
+        if (!placeId || !privateCode) return '';
+        url.searchParams.set('placeId', placeId);
+        url.searchParams.set('privateCode', privateCode);
+        return url.toString();
+      }
+      if (!placeId) return '';
       url.searchParams.set('placeId', placeId);
-      url.searchParams.set('gameInstanceId', instanceId);
+      if (instanceId) {
+        url.searchParams.set('gameInstanceId', instanceId);
+      }
       return url.toString();
     }
 
-    function refresh() {
-      const url = makeUrl();
-      output.textContent = url || 'Fill in both fields to generate an invite link.';
-      if (launchButton) launchButton.disabled = !url;
-      if (copyLinkButton) copyLinkButton.disabled = !url;
-      setStatus(url ? 'Invite link ready.' : 'Enter a place ID and a game instance ID.');
+    function syncModeUi() {
+      const mode = getMode();
+      if (publicFields) publicFields.classList.toggle('hidden', mode !== 'public');
+      if (privateFields) privateFields.classList.toggle('hidden', mode !== 'private');
     }
 
+    function refresh() {
+      syncModeUi();
+      const mode = getMode();
+      const url = makeUrl();
+      output.textContent = url || 'Fill in the required fields to generate a join link.';
+      if (launchButton) launchButton.disabled = !url;
+      if (copyLinkButton) copyLinkButton.disabled = !url;
+      setStatus(
+        url
+          ? 'Join link ready.'
+          : mode === 'private'
+            ? 'Enter a place ID and a private server code or share link.'
+            : 'Enter a place ID. Game instance ID is optional for public joins.'
+      );
+    }
+
+    modeInputs.forEach(function (input) {
+      input.addEventListener('change', refresh);
+    });
     placeInput && placeInput.addEventListener('input', refresh);
     instanceInput && instanceInput.addEventListener('input', refresh);
+    privateInput && privateInput.addEventListener('input', refresh);
 
     launchButton && launchButton.addEventListener('click', function () {
       const url = makeUrl();
@@ -123,7 +222,7 @@
 
     copyLinkButton && copyLinkButton.addEventListener('click', function () {
       const url = makeUrl();
-      if (url) copyText(url, 'Invite link copied.');
+      if (url) copyText(url, 'Join link copied.');
     });
 
     refresh();
