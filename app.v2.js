@@ -26,7 +26,9 @@
   function normalizePrivateCode(value) {
     const text = String(value || '').trim();
     const match = text.match(/[?&]code=([A-Za-z0-9]+)/i);
-    return match ? match[1] : text.replace(/[^A-Za-z0-9]/g, '');
+    if (match) return match[1];
+    const privateLinkCode = normalizePrivateLinkCode(text);
+    return privateLinkCode || text.replace(/[^A-Za-z0-9]/g, '');
   }
 
   function normalizePrivateLinkCode(value) {
@@ -181,6 +183,7 @@
     const instanceInput = byId('gameInstanceId');
     const inviteLinkInput = byId('inviteLink');
     const privateInput = byId('privateCode');
+    const privateGameLinkInput = byId('privateGameLink');
     const publicFields = byId('public-fields');
     const privateFields = byId('private-fields');
     const launchButton = byId('launch-invite');
@@ -199,7 +202,9 @@
       const mode = getMode();
       const placeId = normalizePlaceId(placeInput && placeInput.value);
       const instanceId = normalizeInstanceId(instanceInput && instanceInput.value);
-      const privateCode = normalizePrivateCode(privateInput && privateInput.value);
+      const privateCode = normalizePrivateCode(
+        (privateInput && privateInput.value) || (privateGameLinkInput && privateGameLinkInput.value)
+      );
       const url = new URL('../invite/', window.location.href);
       if (mode === 'private') {
         if (!privateCode) return '';
@@ -251,6 +256,7 @@
         const privateRadio = document.querySelector('input[name="joinType"][value="private"]');
         if (privateRadio) privateRadio.checked = true;
         if (privateInput) privateInput.value = parsed.privateCode;
+        if (privateGameLinkInput) privateGameLinkInput.value = raw;
         if (placeInput) placeInput.value = '';
         if (instanceInput) instanceInput.value = '';
         return;
@@ -297,6 +303,7 @@
     placeInput && placeInput.addEventListener('input', refresh);
     instanceInput && instanceInput.addEventListener('input', refresh);
     privateInput && privateInput.addEventListener('input', refresh);
+    privateGameLinkInput && privateGameLinkInput.addEventListener('input', refresh);
 
     launchButton && launchButton.addEventListener('click', function () {
       const url = makeUrl();
