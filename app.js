@@ -38,8 +38,10 @@
   }
 
   function buildPrivateLink(placeId, privateCode) {
-    if (!placeId || !privateCode) return '';
-    return 'roblox://placeId=' + encodeURIComponent(placeId) + '&linkCode=' + encodeURIComponent(privateCode);
+    if (!privateCode) return '';
+    return placeId
+      ? 'roblox://placeId=' + encodeURIComponent(placeId) + '&linkCode=' + encodeURIComponent(privateCode)
+      : 'roblox://navigation/share_links?code=' + encodeURIComponent(privateCode) + '&type=Server';
   }
 
   function buildWebLink(placeId, instanceId) {
@@ -86,8 +88,6 @@
     const openApp = byId('open-app');
     const copyJob = byId('copy-job');
     const openWeb = byId('open-web');
-    const missingState = byId('missing-state');
-    const readyState = byId('ready-state');
     const description = byId('invite-description');
     const deepLink = mode === 'private'
       ? buildPrivateLink(placeId, privateCode)
@@ -101,21 +101,17 @@
         : buildPlaceWebLink(placeId);
 
     if (!placeId && mode !== 'private') {
-      if (missingState) missingState.hidden = false;
-      if (readyState) readyState.hidden = true;
-      setStatus('Missing placeId in the URL.', 'error');
+      window.location.replace('../menu/' + window.location.search + window.location.hash);
       return;
     }
 
-    if (mode === 'private' && (!placeId || !privateCode)) {
-      if (missingState) missingState.hidden = false;
-      if (readyState) readyState.hidden = true;
-      setStatus('Missing placeId or private server code in the URL.', 'error');
+    if (mode === 'private' && !privateCode) {
+      window.location.replace('../menu/' + window.location.search + window.location.hash);
       return;
     }
 
     if (jobValue) jobValue.textContent = instanceId;
-    if (placeValue) placeValue.textContent = placeId;
+    if (placeValue) placeValue.textContent = placeId || 'Not required for this private link';
     if (openWeb) openWeb.href = webLink;
     if (description) {
       description.textContent = mode === 'private'
@@ -158,6 +154,7 @@
     const publicFields = byId('public-fields');
     const privateFields = byId('private-fields');
     const launchButton = byId('launch-invite');
+    const viewGameButton = byId('view-game');
     const copyLinkButton = byId('copy-link');
     const output = byId('generated-link');
 
@@ -173,8 +170,10 @@
       const privateCode = normalizePrivateCode(privateInput && privateInput.value);
       const url = new URL('../invite/', window.location.href);
       if (mode === 'private') {
-        if (!placeId || !privateCode) return '';
-        url.searchParams.set('placeId', placeId);
+        if (!privateCode) return '';
+        if (placeId) {
+          url.searchParams.set('placeId', placeId);
+        }
         url.searchParams.set('privateCode', privateCode);
         return url.toString();
       }
@@ -184,6 +183,18 @@
         url.searchParams.set('gameInstanceId', instanceId);
       }
       return url.toString();
+    }
+
+    function makeViewUrl() {
+      const mode = getMode();
+      const placeId = normalizePlaceId(placeInput && placeInput.value);
+      const instanceId = normalizeInstanceId(instanceInput && instanceInput.value);
+      const privateCode = normalizePrivateCode(privateInput && privateInput.value);
+      if (mode === 'private') {
+        return privateCode ? buildPrivateWebLink(privateCode) : '';
+      }
+      if (!placeId) return '';
+      return instanceId ? buildWebLink(placeId, instanceId) : buildPlaceWebLink(placeId);
     }
 
     function syncModeUi() {
@@ -196,14 +207,16 @@
       syncModeUi();
       const mode = getMode();
       const url = makeUrl();
+      const viewUrl = makeViewUrl();
       output.textContent = url || 'Fill in the required fields to generate a join link.';
       if (launchButton) launchButton.disabled = !url;
+      if (viewGameButton) viewGameButton.disabled = !viewUrl;
       if (copyLinkButton) copyLinkButton.disabled = !url;
       setStatus(
         url
           ? 'Join link ready.'
           : mode === 'private'
-            ? 'Enter a place ID and a private server code or share link.'
+            ? 'Enter a private server code or share link. Place ID is optional.'
             : 'Enter a place ID. Game instance ID is optional for public joins.'
       );
     }
@@ -218,6 +231,13 @@
     launchButton && launchButton.addEventListener('click', function () {
       const url = makeUrl();
       if (url) window.location.href = url;
+    });
+
+    viewGameButton && viewGameButton.addEventListener('click', function () {
+      const viewUrl = makeViewUrl();
+      if (viewUrl) {
+        window.open(viewUrl, '_blank', 'noopener');
+      }
     });
 
     copyLinkButton && copyLinkButton.addEventListener('click', function () {
