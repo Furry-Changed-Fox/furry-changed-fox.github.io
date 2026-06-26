@@ -182,6 +182,7 @@
     const copyLinkButton = byId('copy-link');
     const output = byId('generated-link');
     let lastInviteLinkApplied = '';
+    let lastPublicPlaceId = '';
 
     function getMode() {
       const checked = document.querySelector('input[name="joinType"]:checked');
@@ -196,9 +197,6 @@
       const url = new URL('../invite/', window.location.href);
       if (mode === 'private') {
         if (!privateCode) return '';
-        if (placeId) {
-          url.searchParams.set('placeId', placeId);
-        }
         url.searchParams.set('privateCode', privateCode);
         return url.toString();
       }
@@ -214,7 +212,9 @@
       const mode = getMode();
       const placeId = normalizePlaceId(placeInput && placeInput.value);
       const instanceId = normalizeInstanceId(instanceInput && instanceInput.value);
-      if (mode === 'private') return '';
+      if (mode === 'private') {
+        return lastPublicPlaceId ? buildPlaceWebLink(lastPublicPlaceId) : '';
+      }
       if (!placeId) return '';
       return instanceId ? buildWebLink(placeId, instanceId) : buildPlaceWebLink(placeId);
     }
@@ -260,6 +260,12 @@
     function refresh() {
       syncModeUi();
       const mode = getMode();
+      if (mode === 'public') {
+        const currentPublicPlaceId = normalizePlaceId(placeInput && placeInput.value);
+        if (currentPublicPlaceId) {
+          lastPublicPlaceId = currentPublicPlaceId;
+        }
+      }
       const url = makeUrl();
       const viewUrl = makeViewUrl();
       output.textContent = url || 'Fill in the required fields to generate a join link.';
