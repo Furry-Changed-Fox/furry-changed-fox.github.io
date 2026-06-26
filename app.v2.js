@@ -29,6 +29,12 @@
     return match ? match[1] : text.replace(/[^A-Za-z0-9]/g, '');
   }
 
+  function normalizePrivateLinkCode(value) {
+    const text = String(value || '').trim();
+    const match = text.match(/[?&]privateServerLinkCode=([A-Za-z0-9]+)/i);
+    return match ? match[1] : text.replace(/[^A-Za-z0-9]/g, '');
+  }
+
   function parseInviteLikeInput(value) {
     const text = String(value || '').trim();
     if (!text) return null;
@@ -38,7 +44,7 @@
       return {
         placeId: normalizePlaceId(params.get('placeId')),
         instanceId: normalizeInstanceId(params.get('gameInstanceId') || params.get('jobId')),
-        privateCode: normalizePrivateCode(params.get('privateCode') || params.get('linkCode') || params.get('privateServerCode') || params.get('privateServerLink') || params.get('code'))
+        privateCode: normalizePrivateCode(params.get('privateCode') || params.get('linkCode') || params.get('privateServerCode') || params.get('privateServerLink') || params.get('code') || params.get('privateServerLinkCode'))
       };
     } catch (_) {
       return null;
@@ -96,7 +102,7 @@
     const params = getParams();
     const placeId = normalizePlaceId(params.get('placeId'));
     const instanceId = normalizeInstanceId(params.get('gameInstanceId') || params.get('jobId'));
-    const privateCode = normalizePrivateCode(params.get('privateCode') || params.get('linkCode') || params.get('privateServerCode') || params.get('privateServerLink'));
+    const privateCode = normalizePrivateCode(params.get('privateCode') || params.get('linkCode') || params.get('privateServerCode') || params.get('privateServerLink') || params.get('privateServerLinkCode'));
     const mode = privateCode ? 'private' : 'public';
     const jobValue = byId('job-id');
     const placeBlock = byId('place-block');
