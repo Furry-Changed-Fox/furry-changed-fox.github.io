@@ -236,7 +236,8 @@
         const privateRadio = document.querySelector('input[name="joinType"][value="private"]');
         if (privateRadio) privateRadio.checked = true;
         if (privateInput) privateInput.value = parsed.privateCode;
-        if (placeInput && parsed.placeId) placeInput.value = parsed.placeId;
+        if (placeInput) placeInput.value = '';
+        if (instanceInput) instanceInput.value = '';
         return;
       }
       if (parsed.placeId || parsed.instanceId) {
