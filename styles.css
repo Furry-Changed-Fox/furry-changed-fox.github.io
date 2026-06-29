@@ -222,6 +222,35 @@ code, .code-block {
   padding: 18px;
 }
 
+.toolbar {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.toolbar .field {
+  margin: 0;
+}
+
+.toolbar select,
+.toolbar input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-size: 15px;
+  outline: none;
+}
+
+.toolbar select:focus,
+.toolbar input:focus {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(88, 101, 242, .18);
+}
+
 .game-card h2 {
   margin: 0 0 8px;
   font-size: 20px;
@@ -231,8 +260,57 @@ code, .code-block {
   margin: 0 0 14px;
 }
 
+.game-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 110px;
+  border-radius: 14px;
+  margin-bottom: 14px;
+  font-size: 42px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, rgba(88,101,242,.95), rgba(124,136,255,.75));
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.game-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .game-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.empty-state {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--subtle);
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
 }

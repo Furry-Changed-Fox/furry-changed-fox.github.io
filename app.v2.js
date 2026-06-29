@@ -330,6 +330,12 @@
   }
 
   function initPrivateServersPage() {
+    const grid = byId('ps-grid');
+    const cards = Array.from(document.querySelectorAll('[data-ps-card]'));
+    const searchInput = byId('ps-search');
+    const categorySelect = byId('ps-category');
+    const sortSelect = byId('ps-sort');
+    const emptyState = byId('ps-empty');
     const buttons = document.querySelectorAll('[data-share-code]');
     buttons.forEach(function (button) {
       button.addEventListener('click', function () {
@@ -338,6 +344,46 @@
         window.location.href = buildShareLinkDeepLink(code);
       });
     });
+
+    function applyFilters() {
+      const query = String(searchInput && searchInput.value || '').trim().toLowerCase();
+      const category = String(categorySelect && categorySelect.value || 'all');
+      const sort = String(sortSelect && sortSelect.value || 'popularity-desc');
+
+      const visibleCards = cards.filter(function (card) {
+        const name = String(card.getAttribute('data-name') || '').toLowerCase();
+        const searchBlob = String(card.getAttribute('data-search') || '').toLowerCase();
+        const cardCategory = String(card.getAttribute('data-category') || 'other');
+        const matchesQuery = !query || name.includes(query) || searchBlob.includes(query);
+        const matchesCategory = category === 'all' || cardCategory === category;
+        const visible = matchesQuery && matchesCategory;
+        card.classList.toggle('hidden', !visible);
+        return visible;
+      });
+
+      const sorted = visibleCards.slice().sort(function (a, b) {
+        const nameA = String(a.getAttribute('data-name') || '');
+        const nameB = String(b.getAttribute('data-name') || '');
+        const popA = Number(a.getAttribute('data-popularity') || '0');
+        const popB = Number(b.getAttribute('data-popularity') || '0');
+
+        if (sort === 'name-asc') return nameA.localeCompare(nameB);
+        if (sort === 'name-desc') return nameB.localeCompare(nameA);
+        if (sort === 'popularity-asc') return popA - popB;
+        return popB - popA;
+      });
+
+      sorted.forEach(function (card) {
+        grid.appendChild(card);
+      });
+
+      if (emptyState) emptyState.classList.toggle('hidden', visibleCards.length > 0);
+    }
+
+    searchInput && searchInput.addEventListener('input', applyFilters);
+    categorySelect && categorySelect.addEventListener('change', applyFilters);
+    sortSelect && sortSelect.addEventListener('change', applyFilters);
+    applyFilters();
   }
 
   if (document.body.dataset.page === 'invite') initInvitePage();
