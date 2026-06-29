@@ -40,6 +40,49 @@
         </div>
       </div>
 
+      <section class="community-panel">
+        <h2>Community Uploads</h2>
+        <p>Anyone can submit their own private server for review. Only Roblox private server share-link formats are accepted, so random links will be rejected.</p>
+
+        <div class="stack compact-stack">
+          <div class="field">
+            <label for="community-game-name">Game name</label>
+            <input id="community-game-name" placeholder="Example: Blox Fruits" />
+          </div>
+
+          <div class="field">
+            <label for="community-category">Category</label>
+            <select id="community-category">
+              <option value="grinding">Grinding</option>
+              <option value="adventure">Adventure</option>
+              <option value="building">Building</option>
+              <option value="obby">Obby</option>
+              <option value="social">Social / Party</option>
+              <option value="survival">Survival</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="community-private-link">Private server share link</label>
+            <input id="community-private-link" placeholder="https://www.roblox.com/share?code=...&type=Server" />
+          </div>
+
+          <div class="field">
+            <label for="community-note">Short note <span class="small">(optional)</span></label>
+            <textarea id="community-note" rows="3" placeholder="Optional details like why people should join, region, or game mode."></textarea>
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button class="button" id="community-submit" type="button">Submit for Review</button>
+          <button class="button secondary" id="community-copy" type="button">Copy Submission</button>
+        </div>
+
+        <div class="code-block" id="community-preview">Enter a valid Roblox private server share link to prepare a submission.</div>
+        <p class="small status" id="community-status">Submissions open a pre-filled GitHub issue for manual review before being added to the public list.</p>
+      </section>
+
       <div class="games-grid" id="ps-grid">
         <article class="game-card" data-ps-card data-name="Blox Fruits" data-category="grinding" data-popularity="100" data-search="blox fruits grinding anime pirate">
           <div class="game-thumb">🍎</div>

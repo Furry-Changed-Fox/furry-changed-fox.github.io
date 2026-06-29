@@ -234,7 +234,8 @@ code, .code-block {
 }
 
 .toolbar select,
-.toolbar input {
+.toolbar input,
+.field select {
   width: 100%;
   border: 1px solid var(--border);
   background: var(--panel-2);
@@ -246,9 +247,27 @@ code, .code-block {
 }
 
 .toolbar select:focus,
-.toolbar input:focus {
+.toolbar input:focus,
+.field select:focus {
   border-color: var(--accent-2);
   box-shadow: 0 0 0 3px rgba(88, 101, 242, .18);
+}
+
+.community-panel {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+}
+
+.community-panel h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+}
+
+.compact-stack {
+  margin-top: 18px;
 }
 
 .game-card h2 {

@@ -84,6 +84,23 @@
     return 'roblox://navigation/share_links?code=' + encodeURIComponent(privateCode) + '&type=Server';
   }
 
+  function buildCommunityIssueUrl(payload) {
+    const url = new URL('https://github.com/Furry-Changed-Fox/furry-changed-fox.github.io/issues/new');
+    url.searchParams.set('title', 'Community private server: ' + payload.gameName);
+    url.searchParams.set('body', [
+      '## Community Private Server Submission',
+      '',
+      '**Game name:** ' + payload.gameName,
+      '**Category:** ' + payload.categoryLabel,
+      '**Private server share link:** ' + payload.shareLink,
+      '**Share code:** ' + payload.shareCode,
+      payload.note ? '**Note:** ' + payload.note : '**Note:** (none)',
+      '',
+      '> This was submitted from the /ps community upload form and should only be added after review.'
+    ].join('\n'));
+    return url.toString();
+  }
+
   async function copyText(text, successLabel) {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -337,6 +354,14 @@
     const sortSelect = byId('ps-sort');
     const emptyState = byId('ps-empty');
     const buttons = document.querySelectorAll('[data-share-code]');
+    const communityName = byId('community-game-name');
+    const communityCategory = byId('community-category');
+    const communityLink = byId('community-private-link');
+    const communityNote = byId('community-note');
+    const communityPreview = byId('community-preview');
+    const communityStatus = byId('community-status');
+    const communitySubmit = byId('community-submit');
+    const communityCopy = byId('community-copy');
     buttons.forEach(function (button) {
       button.addEventListener('click', function () {
         const code = button.getAttribute('data-share-code') || '';
@@ -344,6 +369,68 @@
         window.location.href = buildShareLinkDeepLink(code);
       });
     });
+
+    function setCommunityStatus(message, type) {
+      if (!communityStatus) return;
+      communityStatus.textContent = message;
+      communityStatus.className = 'small status' + (type ? ' ' + type : '');
+    }
+
+    function getCategoryLabel(value) {
+      const option = communityCategory && communityCategory.options[communityCategory.selectedIndex];
+      return option ? option.text : value;
+    }
+
+    function getCommunitySubmission() {
+      const gameName = String(communityName && communityName.value || '').trim();
+      const category = String(communityCategory && communityCategory.value || 'other').trim();
+      const categoryLabel = getCategoryLabel(category);
+      const shareLink = String(communityLink && communityLink.value || '').trim();
+      const note = String(communityNote && communityNote.value || '').trim();
+      const shareCode = normalizePrivateCode(shareLink);
+      const isShareUrl = /^https:\/\/www\.roblox\.com\/share\?/i.test(shareLink);
+      const hasServerType = /[?&]type=Server(?:&|$)/i.test(shareLink);
+      const valid = !!gameName && !!shareCode && isShareUrl && hasServerType;
+      return {
+        gameName: gameName,
+        category: category,
+        categoryLabel: categoryLabel,
+        shareLink: shareLink,
+        shareCode: shareCode,
+        note: note,
+        valid: valid
+      };
+    }
+
+    function renderCommunityPreview() {
+      const submission = getCommunitySubmission();
+      if (!communityPreview) return submission;
+      if (!submission.shareLink) {
+        communityPreview.textContent = 'Enter a valid Roblox private server share link to prepare a submission.';
+        if (communitySubmit) communitySubmit.disabled = true;
+        if (communityCopy) communityCopy.disabled = true;
+        setCommunityStatus('Submissions open a pre-filled GitHub issue for manual review before being added to the public list.');
+        return submission;
+      }
+      if (!submission.valid) {
+        communityPreview.textContent = 'Invalid format. Use a Roblox private server share link like https://www.roblox.com/share?code=...&type=Server and include a game name.';
+        if (communitySubmit) communitySubmit.disabled = true;
+        if (communityCopy) communityCopy.disabled = true;
+        setCommunityStatus('Only Roblox private server share-link format is accepted.', 'error');
+        return submission;
+      }
+      communityPreview.textContent = [
+        'Game: ' + submission.gameName,
+        'Category: ' + submission.categoryLabel,
+        'Share code: ' + submission.shareCode,
+        'Link: ' + submission.shareLink,
+        submission.note ? 'Note: ' + submission.note : 'Note: (none)'
+      ].join('\n');
+      if (communitySubmit) communitySubmit.disabled = false;
+      if (communityCopy) communityCopy.disabled = false;
+      setCommunityStatus('Valid submission ready. It will be sent for manual review before it appears publicly.', 'ok');
+      return submission;
+    }
 
     function applyFilters() {
       const query = String(searchInput && searchInput.value || '').trim().toLowerCase();
@@ -383,7 +470,30 @@
     searchInput && searchInput.addEventListener('input', applyFilters);
     categorySelect && categorySelect.addEventListener('change', applyFilters);
     sortSelect && sortSelect.addEventListener('change', applyFilters);
+    communityName && communityName.addEventListener('input', renderCommunityPreview);
+    communityCategory && communityCategory.addEventListener('change', renderCommunityPreview);
+    communityLink && communityLink.addEventListener('input', renderCommunityPreview);
+    communityNote && communityNote.addEventListener('input', renderCommunityPreview);
+    communityCopy && communityCopy.addEventListener('click', function () {
+      const submission = renderCommunityPreview();
+      if (!submission.valid) return;
+      copyText([
+        'Game: ' + submission.gameName,
+        'Category: ' + submission.categoryLabel,
+        'Share link: ' + submission.shareLink,
+        'Share code: ' + submission.shareCode,
+        'Note: ' + (submission.note || '(none)')
+      ].join('\n'), 'Submission copied.');
+      setCommunityStatus('Submission copied. You can paste it anywhere if needed.', 'ok');
+    });
+    communitySubmit && communitySubmit.addEventListener('click', function () {
+      const submission = renderCommunityPreview();
+      if (!submission.valid) return;
+      window.open(buildCommunityIssueUrl(submission), '_blank', 'noopener');
+      setCommunityStatus('Opened a pre-filled GitHub issue for review.', 'ok');
+    });
     applyFilters();
+    renderCommunityPreview();
   }
 
   if (document.body.dataset.page === 'invite') initInvitePage();
