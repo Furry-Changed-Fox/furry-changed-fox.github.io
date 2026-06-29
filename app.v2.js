@@ -80,6 +80,10 @@
     return 'https://www.roblox.com/share?code=' + encodeURIComponent(privateCode) + '&type=Server';
   }
 
+  function buildShareLinkDeepLink(privateCode) {
+    return 'roblox://navigation/share_links?code=' + encodeURIComponent(privateCode) + '&type=Server';
+  }
+
   async function copyText(text, successLabel) {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -325,6 +329,18 @@
     refresh();
   }
 
+  function initPrivateServersPage() {
+    const buttons = document.querySelectorAll('[data-share-code]');
+    buttons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        const code = button.getAttribute('data-share-code') || '';
+        if (!code) return;
+        window.location.href = buildShareLinkDeepLink(code);
+      });
+    });
+  }
+
   if (document.body.dataset.page === 'invite') initInvitePage();
   if (document.body.dataset.page === 'menu') initMenuPage();
+  if (document.body.dataset.page === 'ps') initPrivateServersPage();
 })();

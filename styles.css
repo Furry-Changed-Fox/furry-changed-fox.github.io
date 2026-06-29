@@ -196,3 +196,43 @@ code, .code-block {
 }
 
 .inline-link:hover { text-decoration: underline; }
+
+.card-wide {
+  max-width: 960px;
+}
+
+.top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.game-card {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.game-card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.game-card p {
+  margin: 0 0 14px;
+}
+
+.game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
