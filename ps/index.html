@@ -83,6 +83,7 @@
 
         <div class="buttons">
           <button class="button secondary" id="toggle-community-form" type="button">Open Post Menu</button>
+          <button class="button secondary hidden" id="toggle-admin-menu" type="button">Open Admin Menu</button>
         </div>
 
         <div id="community-form-panel" class="hidden">
@@ -129,7 +130,6 @@
 
           <div class="buttons">
             <button class="button" id="community-submit" type="button">Send Review Request</button>
-            <button class="button secondary" id="community-copy" type="button">Copy Submission</button>
           </div>
 
           <div class="code-block" id="community-preview">Enter a valid Roblox private server share link to prepare a submission.</div>
@@ -151,10 +151,17 @@
         <div class="buttons">
           <button class="button" id="admin-save-token" type="button">Save Token</button>
           <button class="button secondary" id="admin-clear-token" type="button">Clear Token</button>
-          <button class="button" id="admin-publish-post" type="button">Post For Everyone</button>
         </div>
 
         <p class="small status" id="admin-status">Admin actions use your browser-saved GitHub token to update shared website data.</p>
+
+        <div class="divider"></div>
+
+        <h3>Your Own Post Menu</h3>
+        <p class="small">Your own verified posts can be published directly for everyone from here.</p>
+        <div class="buttons">
+          <button class="button" id="admin-publish-post" type="button">Post For Everyone</button>
+        </div>
 
         <div class="divider"></div>
 

@@ -195,7 +195,7 @@
     return response.json();
   }
 
-  async function closeGitHubIssue(issueNumber, token) {
+  async function closeGitHubIssue(issueNumber, token, stateReason) {
     const response = await fetch('https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/issues/' + issueNumber, {
       method: 'PATCH',
       headers: {
@@ -203,7 +203,7 @@
         Accept: 'application/vnd.github+json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ state: 'closed' })
+      body: JSON.stringify({ state: 'closed', state_reason: stateReason || 'completed' })
     });
     if (!response.ok) {
       throw new Error('Could not close issue #' + issueNumber);
@@ -528,9 +528,9 @@
     const communityPreview = byId('community-preview');
     const communityStatus = byId('community-status');
     const communitySubmit = byId('community-submit');
-    const communityCopy = byId('community-copy');
     const toggleCommunityForm = byId('toggle-community-form');
     const communityFormPanel = byId('community-form-panel');
+    const toggleAdminMenu = byId('toggle-admin-menu');
     const discordLogin = byId('discord-login');
     const discordLogout = byId('discord-logout');
     const verifiedUser = byId('verified-user');
@@ -551,6 +551,7 @@
     let globalCommunityPosts = [];
     let pendingReviewIssues = [];
     let communityFormOpen = false;
+    let adminMenuOpen = false;
     buttons.forEach(function (button) {
       button.addEventListener('click', function () {
         const code = button.getAttribute('data-share-code') || '';
@@ -685,7 +686,11 @@
     function renderAdminPanel() {
       if (!adminPanel) return;
       const show = isCommunityAdmin(verifiedDiscordUser);
-      adminPanel.classList.toggle('hidden', !show);
+      adminPanel.classList.toggle('hidden', !show || !adminMenuOpen);
+      if (toggleAdminMenu) {
+        toggleAdminMenu.classList.toggle('hidden', !show);
+        toggleAdminMenu.textContent = adminMenuOpen ? 'Hide Admin Menu' : 'Open Admin Menu';
+      }
       if (show && adminTokenInput && !adminTokenInput.value) {
         adminTokenInput.value = loadAdminToken();
       }
@@ -733,7 +738,7 @@
               note: issue.note
             }].concat(loadCommunityPosts()).slice(0, 100);
             await writeGitHubJson(COMMUNITY_POSTS_PATH, nextPosts, 'Approve community post from issue #' + issue.issueNumber, token);
-            await closeGitHubIssue(issue.issueNumber, token);
+            await closeGitHubIssue(issue.issueNumber, token, 'completed');
             persistAdminToken(token);
             await refreshGlobalCommunityPosts();
             await refreshReviewQueue();
@@ -753,9 +758,9 @@
             return;
           }
           try {
-            await closeGitHubIssue(issueNumber, token);
+            await closeGitHubIssue(issueNumber, token, 'not_planned');
             await refreshReviewQueue();
-            setAdminStatus('Rejected issue #' + issueNumber + '.', 'ok');
+            setAdminStatus('Rejected issue #' + issueNumber + ' as not planned.', 'ok');
           } catch (_) {
             setAdminStatus('Could not reject issue #' + issueNumber + '.', 'error');
           }
@@ -960,7 +965,6 @@
       if (!submission.shareLink) {
         communityPreview.textContent = 'Enter a valid Roblox private server share link to prepare a submission.';
         if (communitySubmit) communitySubmit.disabled = true;
-        if (communityCopy) communityCopy.disabled = true;
         setCommunityStatus(verifiedDiscordUser
           ? 'Submissions open a pre-filled GitHub issue for manual review before being added to the public list.'
           : 'Verify with Discord first, then enter a valid Roblox private server share link.');
@@ -969,14 +973,12 @@
       if (!verifiedDiscordUser) {
         communityPreview.textContent = 'Verify with Discord first. After that, your username, Discord ID, and avatar will be attached to the submission.';
         if (communitySubmit) communitySubmit.disabled = true;
-        if (communityCopy) communityCopy.disabled = true;
         setCommunityStatus('Discord verification is required before posting a community private server.', 'error');
         return submission;
       }
       if (!submission.valid) {
         communityPreview.textContent = 'Invalid format. Use a Roblox private server share link like https://www.roblox.com/share?code=...&type=Server and include a game name.';
         if (communitySubmit) communitySubmit.disabled = true;
-        if (communityCopy) communityCopy.disabled = true;
         setCommunityStatus('Only Roblox private server share-link format is accepted.', 'error');
         return submission;
       }
@@ -990,7 +992,6 @@
         submission.note ? 'Note: ' + submission.note : 'Note: (none)'
       ].join('\n');
       if (communitySubmit) communitySubmit.disabled = false;
-      if (communityCopy) communityCopy.disabled = false;
       setCommunityStatus(isCommunityAdmin(verifiedDiscordUser)
         ? 'Valid verified submission ready. You can submit it for review or publish it globally from the admin menu.'
         : 'Valid verified submission ready. It will be sent for manual review before it appears publicly.', 'ok');
@@ -1051,20 +1052,6 @@
       persistDraft();
       renderCommunityPreview();
     });
-    communityCopy && communityCopy.addEventListener('click', function () {
-      const submission = renderCommunityPreview();
-      if (!submission.valid) return;
-      copyText([
-        'Submitter: ' + submission.submitterLabel,
-        'Game: ' + submission.gameName,
-        'Category: ' + submission.categoryLabel,
-        'Share link: ' + submission.shareLink,
-        'Share code: ' + submission.shareCode,
-        'Avatar: ' + submission.submitterAvatar,
-        'Note: ' + (submission.note || '(none)')
-      ].join('\n'), 'Submission copied.');
-      setCommunityStatus('Submission copied. You can paste it anywhere if needed.', 'ok');
-    });
     communitySubmit && communitySubmit.addEventListener('click', function () {
       const submission = renderCommunityPreview();
       if (!submission.valid) return;
@@ -1082,6 +1069,10 @@
     toggleCommunityForm && toggleCommunityForm.addEventListener('click', function () {
       communityFormOpen = !communityFormOpen;
       renderCommunityFormState();
+    });
+    toggleAdminMenu && toggleAdminMenu.addEventListener('click', function () {
+      adminMenuOpen = !adminMenuOpen;
+      renderAdminPanel();
     });
     discordLogin && discordLogin.addEventListener('click', function () {
       persistDraft();
