@@ -91,6 +91,7 @@
       '## Community Private Server Submission',
       '',
       '**Submitted by:** ' + payload.submitterLabel,
+      '**Avatar:** ' + payload.submitterAvatar,
       '**Game name:** ' + payload.gameName,
       '**Category:** ' + payload.categoryLabel,
       '**Private server share link:** ' + payload.shareLink,
@@ -223,7 +224,8 @@
     const submitterLabel = extractIssueField(body, 'Submitted by');
     const gameName = extractIssueField(body, 'Game name');
     const categoryLabel = extractIssueField(body, 'Category') || 'None';
-    const shareLink = extractIssueField(body, 'Private server share link');
+      const avatar = extractIssueField(body, 'Avatar') || String(issue && issue.user && issue.user.avatar_url || '');
+      const shareLink = extractIssueField(body, 'Private server share link');
     const shareCode = extractIssueField(body, 'Share code');
     const note = extractIssueField(body, 'Note').replace(/^\(none\)$/i, '').trim();
     const submitterMatch = submitterLabel.match(/^(.+?)\s*\((\d+)\)$/);
@@ -237,10 +239,16 @@
       category: categoryLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'none',
       shareLink: shareLink,
       shareCode: shareCode,
-      note: note,
-      submitterAvatar: ''
+        note: note,
+        submitterAvatar: avatar
     };
   }
+
+    function renderCommunityFormState() {
+      if (!toggleCommunityForm || !communityFormPanel) return;
+      communityFormPanel.classList.toggle('hidden', !communityFormOpen);
+      toggleCommunityForm.textContent = communityFormOpen ? 'Hide Post Menu' : 'Open Post Menu';
+    }
 
   function buildDeleteRequestIssueUrl(post) {
     const url = new URL('https://github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/issues/new');
@@ -527,6 +535,8 @@
     const communityStatus = byId('community-status');
     const communitySubmit = byId('community-submit');
     const communityCopy = byId('community-copy');
+    const toggleCommunityForm = byId('toggle-community-form');
+    const communityFormPanel = byId('community-form-panel');
     const discordLogin = byId('discord-login');
     const discordLogout = byId('discord-logout');
     const verifiedUser = byId('verified-user');
@@ -546,6 +556,7 @@
     let verifiedDiscordUser = null;
     let globalCommunityPosts = [];
     let pendingReviewIssues = [];
+    let communityFormOpen = false;
     buttons.forEach(function (button) {
       button.addEventListener('click', function () {
         const code = button.getAttribute('data-share-code') || '';
@@ -691,6 +702,7 @@
           + '<div class="code-block">' + escapeHtml(entry.shareLink || '') + '</div>'
           + '<div class="game-actions">'
           + '<button class="button" data-approve-issue="' + escapeHtml(entry.issueNumber) + '">Approve to Community</button>'
+          + '<button class="button secondary" data-reject-issue="' + escapeHtml(entry.issueNumber) + '">Reject</button>'
           + '<a class="button secondary" href="https://github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/issues/' + escapeHtml(entry.issueNumber) + '" target="_blank" rel="noopener">Open Issue</a>'
           + '</div>'
           + '</article>';
@@ -728,6 +740,24 @@
             setAdminStatus('Approved issue #' + issue.issueNumber + ' into Community Posts.', 'ok');
           } catch (_) {
             setAdminStatus('Could not approve issue #' + issue.issueNumber + '.', 'error');
+          }
+        });
+      });
+      const rejectButtons = reviewQueue.querySelectorAll('[data-reject-issue]');
+      rejectButtons.forEach(function (button) {
+        button.addEventListener('click', async function () {
+          const issueNumber = Number(button.getAttribute('data-reject-issue') || '0');
+          const token = String(adminTokenInput && adminTokenInput.value || loadAdminToken()).trim();
+          if (!issueNumber || !token) {
+            setAdminStatus('Save a GitHub token first.', 'error');
+            return;
+          }
+          try {
+            await closeGitHubIssue(issueNumber, token);
+            await refreshReviewQueue();
+            setAdminStatus('Rejected issue #' + issueNumber + '.', 'ok');
+          } catch (_) {
+            setAdminStatus('Could not reject issue #' + issueNumber + '.', 'error');
           }
         });
       });
@@ -1039,24 +1069,19 @@
       const submission = renderCommunityPreview();
       if (!submission.valid) return;
       window.open(buildCommunityIssueUrl(submission), '_blank', 'noopener');
-      saveCommunityPost({
-        id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
-        submitterId: verifiedDiscordUser ? verifiedDiscordUser.id : '',
-        submitterLabel: submission.submitterLabel,
-        submitterAvatar: submission.submitterAvatar,
-        gameName: submission.gameName,
-        categoryLabel: submission.categoryLabel,
-        shareCode: submission.shareCode,
-        shareLink: submission.shareLink,
-        note: submission.note
-      });
       clearDraft();
       if (communityName) communityName.value = '';
       if (communityCategory) communityCategory.value = 'none';
       if (communityLink) communityLink.value = '';
       if (communityNote) communityNote.value = '';
+      communityFormOpen = false;
+      renderCommunityFormState();
       renderCommunityPreview();
       setCommunityStatus('Opened a pre-filled GitHub issue for review.', 'ok');
+    });
+    toggleCommunityForm && toggleCommunityForm.addEventListener('click', function () {
+      communityFormOpen = !communityFormOpen;
+      renderCommunityFormState();
     });
     discordLogin && discordLogin.addEventListener('click', function () {
       persistDraft();
@@ -1119,6 +1144,8 @@
         if (communityCategory) communityCategory.value = 'none';
         if (communityLink) communityLink.value = '';
         if (communityNote) communityNote.value = '';
+        communityFormOpen = false;
+        renderCommunityFormState();
         renderCommunityPreview();
         setAdminStatus('Community post published globally.', 'ok');
       } catch (_) {
@@ -1127,6 +1154,7 @@
     });
     applyFilters();
     restoreDraft();
+    renderCommunityFormState();
     renderAdminPanel();
     refreshGlobalCommunityPosts();
     resolveDiscordAuth().then(function () {

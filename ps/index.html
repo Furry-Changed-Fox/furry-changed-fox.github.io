@@ -81,54 +81,60 @@
           </div>
         </div>
 
-        <div class="stack compact-stack">
-          <div class="field">
-            <label for="community-game-name">Game name</label>
-            <input id="community-game-name" placeholder="Example: Blox Fruits" />
-          </div>
-
-          <div class="field">
-            <label for="community-category">Category</label>
-            <select id="community-category">
-              <option value="none" selected>None</option>
-              <option value="grinding">Grinding</option>
-              <option value="adventure">Adventure</option>
-              <option value="action">Action</option>
-              <option value="anime">Anime</option>
-              <option value="building">Building</option>
-              <option value="fighting">Fighting</option>
-              <option value="horror">Horror</option>
-              <option value="obby">Obby</option>
-              <option value="roleplay">Roleplay</option>
-              <option value="sandbox">Sandbox</option>
-              <option value="shooter">Shooter</option>
-              <option value="social">Social / Party</option>
-              <option value="sports">Sports</option>
-              <option value="simulator">Simulator</option>
-              <option value="strategy">Strategy</option>
-              <option value="survival">Survival</option>
-              <option value="others">Others</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="community-private-link">Private server share link</label>
-            <input id="community-private-link" placeholder="https://www.roblox.com/share?code=...&type=Server" />
-          </div>
-
-          <div class="field">
-            <label for="community-note">Short note <span class="small">(optional)</span></label>
-            <textarea id="community-note" rows="3" placeholder="Optional details like why people should join, region, or game mode."></textarea>
-          </div>
-        </div>
-
         <div class="buttons">
-          <button class="button" id="community-submit" type="button">Submit for Review</button>
-          <button class="button secondary" id="community-copy" type="button">Copy Submission</button>
+          <button class="button secondary" id="toggle-community-form" type="button">Open Post Menu</button>
         </div>
 
-        <div class="code-block" id="community-preview">Enter a valid Roblox private server share link to prepare a submission.</div>
-        <p class="small status" id="community-status">Submissions open a pre-filled GitHub issue for manual review before being added to the public list.</p>
+        <div id="community-form-panel" class="hidden">
+          <div class="stack compact-stack">
+            <div class="field">
+              <label for="community-game-name">Game name</label>
+              <input id="community-game-name" placeholder="Example: Blox Fruits" />
+            </div>
+
+            <div class="field">
+              <label for="community-category">Category</label>
+              <select id="community-category">
+                <option value="none" selected>None</option>
+                <option value="grinding">Grinding</option>
+                <option value="adventure">Adventure</option>
+                <option value="action">Action</option>
+                <option value="anime">Anime</option>
+                <option value="building">Building</option>
+                <option value="fighting">Fighting</option>
+                <option value="horror">Horror</option>
+                <option value="obby">Obby</option>
+                <option value="roleplay">Roleplay</option>
+                <option value="sandbox">Sandbox</option>
+                <option value="shooter">Shooter</option>
+                <option value="social">Social / Party</option>
+                <option value="sports">Sports</option>
+                <option value="simulator">Simulator</option>
+                <option value="strategy">Strategy</option>
+                <option value="survival">Survival</option>
+                <option value="others">Others</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="community-private-link">Private server share link</label>
+              <input id="community-private-link" placeholder="https://www.roblox.com/share?code=...&type=Server" />
+            </div>
+
+            <div class="field">
+              <label for="community-note">Short note <span class="small">(optional)</span></label>
+              <textarea id="community-note" rows="3" placeholder="Optional details like why people should join, region, or game mode."></textarea>
+            </div>
+          </div>
+
+          <div class="buttons">
+            <button class="button" id="community-submit" type="button">Send Review Request</button>
+            <button class="button secondary" id="community-copy" type="button">Copy Submission</button>
+          </div>
+
+          <div class="code-block" id="community-preview">Enter a valid Roblox private server share link to prepare a submission.</div>
+          <p class="small status" id="community-status">Submissions open a pre-filled GitHub issue for manual review before being added to the public list.</p>
+        </div>
       </section>
 
       <section class="community-panel hidden" id="admin-panel">
@@ -145,7 +151,7 @@
         <div class="buttons">
           <button class="button" id="admin-save-token" type="button">Save Token</button>
           <button class="button secondary" id="admin-clear-token" type="button">Clear Token</button>
-          <button class="button" id="admin-publish-post" type="button">Publish This Submission Globally</button>
+          <button class="button" id="admin-publish-post" type="button">Post For Everyone</button>
         </div>
 
         <p class="small status" id="admin-status">Admin actions use your browser-saved GitHub token to update shared website data.</p>
@@ -263,7 +269,6 @@
 
       <section class="community-panel">
         <h2>Community Posts</h2>
-        <p>Approved community private servers shown here are shared globally for everyone on the website and appear under your main private server list.</p>
         <div class="games-grid" id="community-posts"></div>
         <div class="empty-state" id="community-empty">No community posts are live here yet.</div>
       </section>
