@@ -122,6 +122,10 @@
     return url.toString();
   }
 
+  function isCommunityAdmin(user) {
+    return !!(user && user.id === '1290683047921979393');
+  }
+
   function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -494,10 +498,27 @@
       } catch (_) {}
     }
 
+    function deleteCommunityPost(postId) {
+      try {
+        const posts = loadCommunityPosts().filter(function (post) {
+          return post.id !== postId;
+        });
+        localStorage.setItem('ps.communityPosts', JSON.stringify(posts));
+      } catch (_) {}
+    }
+
+    function canDeleteCommunityPost(post) {
+      if (!verifiedDiscordUser || !post) return false;
+      return verifiedDiscordUser.id === post.submitterId || isCommunityAdmin(verifiedDiscordUser);
+    }
+
     function renderCommunityPosts() {
       if (!communityPosts) return;
       const posts = loadCommunityPosts();
       communityPosts.innerHTML = posts.map(function (post) {
+        const deleteButton = canDeleteCommunityPost(post)
+          ? '<button class="button secondary" data-delete-post="' + escapeHtml(post.id) + '">Delete Post</button>'
+          : '';
         return '<article class="game-card">'
           + '<div class="game-meta"><span class="pill">Community</span><span class="pill">' + escapeHtml(post.categoryLabel) + '</span></div>'
           + '<div class="verified-user" style="margin-top:0;padding-top:0;border-top:none;">'
@@ -509,6 +530,7 @@
           + '<div class="game-actions">'
           + '<button class="button" data-share-code="' + escapeHtml(post.shareCode) + '">Join in Roblox</button>'
           + '<a class="button secondary" href="' + escapeHtml(post.shareLink) + '">Open Share Link</a>'
+          + deleteButton
           + '</div>'
           + '</article>';
       }).join('');
@@ -518,6 +540,16 @@
           const code = button.getAttribute('data-share-code') || '';
           if (!code) return;
           window.location.href = buildShareLinkDeepLink(code);
+        });
+      });
+      const deleteButtons = communityPosts.querySelectorAll('[data-delete-post]');
+      deleteButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          const postId = button.getAttribute('data-delete-post') || '';
+          if (!postId) return;
+          deleteCommunityPost(postId);
+          renderCommunityPosts();
+          setCommunityStatus('Community post deleted.', 'ok');
         });
       });
       if (communityEmpty) communityEmpty.classList.toggle('hidden', posts.length > 0);
@@ -726,6 +758,8 @@
       if (!submission.valid) return;
       window.open(buildCommunityIssueUrl(submission), '_blank', 'noopener');
       saveCommunityPost({
+        id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+        submitterId: verifiedDiscordUser ? verifiedDiscordUser.id : '',
         submitterLabel: submission.submitterLabel,
         submitterAvatar: submission.submitterAvatar,
         gameName: submission.gameName,
@@ -749,6 +783,7 @@
     discordLogout && discordLogout.addEventListener('click', function () {
       clearVerifiedUser();
       renderVerifiedUser();
+      renderCommunityPosts();
       renderCommunityPreview();
       setCommunityStatus('Logged out from the saved Discord verification on this browser.', 'ok');
     });
