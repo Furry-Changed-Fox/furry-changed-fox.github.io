@@ -244,12 +244,6 @@
     };
   }
 
-    function renderCommunityFormState() {
-      if (!toggleCommunityForm || !communityFormPanel) return;
-      communityFormPanel.classList.toggle('hidden', !communityFormOpen);
-      toggleCommunityForm.textContent = communityFormOpen ? 'Hide Post Menu' : 'Open Post Menu';
-    }
-
   function buildDeleteRequestIssueUrl(post) {
     const url = new URL('https://github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/issues/new');
     url.searchParams.set('title', 'Delete community post: ' + post.gameName);
@@ -680,6 +674,12 @@
 
     function canHardDeleteCommunityPost(post) {
       return !!(post && verifiedDiscordUser && isCommunityAdmin(verifiedDiscordUser));
+    }
+
+    function renderCommunityFormState() {
+      if (!toggleCommunityForm || !communityFormPanel) return;
+      communityFormPanel.classList.toggle('hidden', !communityFormOpen);
+      toggleCommunityForm.textContent = communityFormOpen ? 'Hide Post Menu' : 'Open Post Menu';
     }
 
     function renderAdminPanel() {
