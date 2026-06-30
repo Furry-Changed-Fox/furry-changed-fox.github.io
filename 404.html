@@ -9,7 +9,7 @@
     const search = window.location.search || '';
     const hash = window.location.hash || '';
     const normalized = path.endsWith('/') ? path : path + '/';
-    const known = ['/invite/', '/menu/', '/ps/'];
+    const known = ['/invite/', '/menu/', '/ps/', '/changelogs/'];
     const target = known.includes(normalized) ? normalized : '/menu/';
     window.location.replace(target + search + hash);
   </script>

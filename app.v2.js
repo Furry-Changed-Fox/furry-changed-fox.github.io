@@ -122,8 +122,78 @@
     return url.toString();
   }
 
+  const GITHUB_OWNER = 'Furry-Changed-Fox';
+  const GITHUB_REPO = 'furry-changed-fox.github.io';
+  const COMMUNITY_POSTS_PATH = 'data/community-posts.json';
+  const CHANGELOGS_PATH = 'data/changelogs.json';
+
   function isCommunityAdmin(user) {
     return !!(user && user.id === '1290683047921979393');
+  }
+
+  function getCacheBustedPath(path) {
+    return path + '?v=' + Date.now();
+  }
+
+  async function fetchJsonFile(path) {
+    const response = await fetch(getCacheBustedPath('../' + path).replace('/../', '/'), { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error('Could not load ' + path);
+    }
+    return response.json();
+  }
+
+  function encodeBase64Unicode(value) {
+    return btoa(unescape(encodeURIComponent(value)));
+  }
+
+  async function readGitHubContents(path, token) {
+    const response = await fetch('https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + path, {
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/vnd.github+json'
+      }
+    });
+    if (!response.ok) {
+      throw new Error('GitHub read failed for ' + path);
+    }
+    return response.json();
+  }
+
+  async function writeGitHubJson(path, jsonValue, message, token) {
+    const current = await readGitHubContents(path, token);
+    const response = await fetch('https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + path, {
+      method: 'PUT',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: message,
+        content: encodeBase64Unicode(JSON.stringify(jsonValue, null, 2) + '\n'),
+        sha: current.sha
+      })
+    });
+    if (!response.ok) {
+      throw new Error('GitHub write failed for ' + path);
+    }
+    return response.json();
+  }
+
+  function buildDeleteRequestIssueUrl(post) {
+    const url = new URL('https://github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/issues/new');
+    url.searchParams.set('title', 'Delete community post: ' + post.gameName);
+    url.searchParams.set('body', [
+      '## Community Post Delete Request',
+      '',
+      '**Post ID:** ' + post.id,
+      '**Submitter:** ' + post.submitterLabel,
+      '**Game:** ' + post.gameName,
+      '',
+      '> Requested from the /ps page by the verified submitter.'
+    ].join('\n'));
+    return url.toString();
   }
 
   function escapeHtml(value) {
@@ -404,7 +474,14 @@
     const verifiedMeta = byId('verified-meta');
     const communityPosts = byId('community-posts');
     const communityEmpty = byId('community-empty');
+    const adminPanel = byId('admin-panel');
+    const adminTokenInput = byId('admin-github-token');
+    const adminSaveToken = byId('admin-save-token');
+    const adminClearToken = byId('admin-clear-token');
+    const adminPublishPost = byId('admin-publish-post');
+    const adminStatus = byId('admin-status');
     let verifiedDiscordUser = null;
+    let globalCommunityPosts = [];
     buttons.forEach(function (button) {
       button.addEventListener('click', function () {
         const code = button.getAttribute('data-share-code') || '';
@@ -419,6 +496,12 @@
       communityStatus.className = 'small status' + (type ? ' ' + type : '');
     }
 
+    function setAdminStatus(message, type) {
+      if (!adminStatus) return;
+      adminStatus.textContent = message;
+      adminStatus.className = 'small status' + (type ? ' ' + type : '');
+    }
+
     function getCategoryLabel(value) {
       const option = communityCategory && communityCategory.options[communityCategory.selectedIndex];
       return option ? option.text : value;
@@ -430,11 +513,31 @@
       } catch (_) {}
     }
 
+    function persistAdminToken(token) {
+      try {
+        localStorage.setItem('ps.githubToken', token);
+      } catch (_) {}
+    }
+
+    function loadAdminToken() {
+      try {
+        return localStorage.getItem('ps.githubToken') || '';
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function clearAdminToken() {
+      try {
+        localStorage.removeItem('ps.githubToken');
+      } catch (_) {}
+    }
+
     function persistDraft() {
       try {
         localStorage.setItem('ps.communityDraft', JSON.stringify({
           gameName: String(communityName && communityName.value || ''),
-          category: String(communityCategory && communityCategory.value || 'grinding'),
+          category: String(communityCategory && communityCategory.value || 'none'),
           shareLink: String(communityLink && communityLink.value || ''),
           note: String(communityNote && communityNote.value || '')
         }));
@@ -482,29 +585,17 @@
     }
 
     function loadCommunityPosts() {
-      try {
-        const raw = localStorage.getItem('ps.communityPosts');
-        return raw ? JSON.parse(raw) : [];
-      } catch (_) {
-        return [];
-      }
+      return Array.isArray(globalCommunityPosts) ? globalCommunityPosts : [];
     }
 
     function saveCommunityPost(post) {
-      try {
-        const posts = loadCommunityPosts();
-        posts.unshift(post);
-        localStorage.setItem('ps.communityPosts', JSON.stringify(posts.slice(0, 24)));
-      } catch (_) {}
+      globalCommunityPosts = [post].concat(loadCommunityPosts()).slice(0, 100);
     }
 
     function deleteCommunityPost(postId) {
-      try {
-        const posts = loadCommunityPosts().filter(function (post) {
-          return post.id !== postId;
-        });
-        localStorage.setItem('ps.communityPosts', JSON.stringify(posts));
-      } catch (_) {}
+      globalCommunityPosts = loadCommunityPosts().filter(function (post) {
+        return post.id !== postId;
+      });
     }
 
     function canDeleteCommunityPost(post) {
@@ -512,12 +603,36 @@
       return verifiedDiscordUser.id === post.submitterId || isCommunityAdmin(verifiedDiscordUser);
     }
 
+    function canHardDeleteCommunityPost(post) {
+      return !!(post && verifiedDiscordUser && isCommunityAdmin(verifiedDiscordUser));
+    }
+
+    function renderAdminPanel() {
+      if (!adminPanel) return;
+      const show = isCommunityAdmin(verifiedDiscordUser);
+      adminPanel.classList.toggle('hidden', !show);
+      if (show && adminTokenInput && !adminTokenInput.value) {
+        adminTokenInput.value = loadAdminToken();
+      }
+    }
+
+    async function refreshGlobalCommunityPosts() {
+      try {
+        globalCommunityPosts = await fetchJsonFile('data/community-posts.json');
+        if (!Array.isArray(globalCommunityPosts)) globalCommunityPosts = [];
+        renderCommunityPosts();
+      } catch (_) {
+        globalCommunityPosts = [];
+        renderCommunityPosts();
+      }
+    }
+
     function renderCommunityPosts() {
       if (!communityPosts) return;
       const posts = loadCommunityPosts();
       communityPosts.innerHTML = posts.map(function (post) {
         const deleteButton = canDeleteCommunityPost(post)
-          ? '<button class="button secondary" data-delete-post="' + escapeHtml(post.id) + '">Delete Post</button>'
+          ? '<button class="button secondary" data-delete-post="' + escapeHtml(post.id) + '" data-delete-mode="' + (canHardDeleteCommunityPost(post) ? 'hard' : 'request') + '">' + (canHardDeleteCommunityPost(post) ? 'Delete Post' : 'Request Delete') + '</button>'
           : '';
         return '<article class="game-card">'
           + '<div class="game-meta"><span class="pill">Community</span><span class="pill">' + escapeHtml(post.categoryLabel) + '</span></div>'
@@ -544,12 +659,30 @@
       });
       const deleteButtons = communityPosts.querySelectorAll('[data-delete-post]');
       deleteButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
+        button.addEventListener('click', async function () {
           const postId = button.getAttribute('data-delete-post') || '';
+          const mode = button.getAttribute('data-delete-mode') || 'request';
           if (!postId) return;
-          deleteCommunityPost(postId);
-          renderCommunityPosts();
-          setCommunityStatus('Community post deleted.', 'ok');
+          const post = loadCommunityPosts().find(function (entry) { return entry.id === postId; });
+          if (!post) return;
+          if (mode === 'hard' && isCommunityAdmin(verifiedDiscordUser)) {
+            const token = loadAdminToken();
+            if (!token) {
+              setCommunityStatus('Save a GitHub token in the admin menu before deleting global posts.', 'error');
+              return;
+            }
+            try {
+              deleteCommunityPost(postId);
+              await writeGitHubJson(COMMUNITY_POSTS_PATH, loadCommunityPosts(), 'Delete community post ' + post.gameName, token);
+              await refreshGlobalCommunityPosts();
+              setCommunityStatus('Community post deleted globally.', 'ok');
+            } catch (_) {
+              setCommunityStatus('Could not delete the global community post.', 'error');
+            }
+            return;
+          }
+          window.open(buildDeleteRequestIssueUrl(post), '_blank', 'noopener');
+          setCommunityStatus('Opened a delete request for review.', 'ok');
         });
       });
       if (communityEmpty) communityEmpty.classList.toggle('hidden', posts.length > 0);
@@ -568,6 +701,7 @@
         discordLogin.classList.remove('hidden');
         verifiedUser && verifiedUser.classList.add('hidden');
         discordLogout && discordLogout.classList.add('hidden');
+        renderAdminPanel();
         return;
       }
       discordLogin.classList.add('hidden');
@@ -578,6 +712,8 @@
       }
       verifiedUser && verifiedUser.classList.remove('hidden');
       discordLogout && discordLogout.classList.remove('hidden');
+      renderAdminPanel();
+      renderCommunityPosts();
     }
 
     async function resolveDiscordAuth() {
@@ -621,7 +757,7 @@
 
     function getCommunitySubmission() {
       const gameName = String(communityName && communityName.value || '').trim();
-      const category = String(communityCategory && communityCategory.value || 'other').trim();
+      const category = String(communityCategory && communityCategory.value || 'none').trim();
       const categoryLabel = getCategoryLabel(category);
       const shareLink = String(communityLink && communityLink.value || '').trim();
       const note = String(communityNote && communityNote.value || '').trim();
@@ -681,7 +817,9 @@
       ].join('\n');
       if (communitySubmit) communitySubmit.disabled = false;
       if (communityCopy) communityCopy.disabled = false;
-      setCommunityStatus('Valid verified submission ready. It will be sent for manual review before it appears publicly.', 'ok');
+      setCommunityStatus(isCommunityAdmin(verifiedDiscordUser)
+        ? 'Valid verified submission ready. You can submit it for review or publish it globally from the admin menu.'
+        : 'Valid verified submission ready. It will be sent for manual review before it appears publicly.', 'ok');
       return submission;
     }
 
@@ -768,10 +906,9 @@
         shareLink: submission.shareLink,
         note: submission.note
       });
-      renderCommunityPosts();
       clearDraft();
       if (communityName) communityName.value = '';
-      if (communityCategory) communityCategory.value = 'grinding';
+      if (communityCategory) communityCategory.value = 'none';
       if (communityLink) communityLink.value = '';
       if (communityNote) communityNote.value = '';
       renderCommunityPreview();
@@ -783,17 +920,98 @@
     discordLogout && discordLogout.addEventListener('click', function () {
       clearVerifiedUser();
       renderVerifiedUser();
-      renderCommunityPosts();
       renderCommunityPreview();
       setCommunityStatus('Logged out from the saved Discord verification on this browser.', 'ok');
     });
+    adminSaveToken && adminSaveToken.addEventListener('click', function () {
+      const token = String(adminTokenInput && adminTokenInput.value || '').trim();
+      if (!token) {
+        setAdminStatus('Enter a GitHub token first.', 'error');
+        return;
+      }
+      persistAdminToken(token);
+      setAdminStatus('GitHub token saved in this browser for admin actions.', 'ok');
+    });
+    adminClearToken && adminClearToken.addEventListener('click', function () {
+      clearAdminToken();
+      if (adminTokenInput) adminTokenInput.value = '';
+      setAdminStatus('Saved GitHub token cleared from this browser.', 'ok');
+    });
+    adminPublishPost && adminPublishPost.addEventListener('click', async function () {
+      if (!isCommunityAdmin(verifiedDiscordUser)) {
+        setAdminStatus('Only your admin Discord account can publish global posts.', 'error');
+        return;
+      }
+      const token = String(adminTokenInput && adminTokenInput.value || loadAdminToken()).trim();
+      if (!token) {
+        setAdminStatus('Paste and save a GitHub token first.', 'error');
+        return;
+      }
+      const submission = renderCommunityPreview();
+      if (!submission.valid) {
+        setAdminStatus('Prepare a valid verified submission first.', 'error');
+        return;
+      }
+      try {
+        const nextPosts = [{
+          id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+          submitterId: verifiedDiscordUser.id,
+          submitterLabel: submission.submitterLabel,
+          submitterAvatar: submission.submitterAvatar,
+          gameName: submission.gameName,
+          categoryLabel: submission.categoryLabel,
+          category: submission.category,
+          shareCode: submission.shareCode,
+          shareLink: submission.shareLink,
+          note: submission.note
+        }].concat(loadCommunityPosts()).slice(0, 100);
+        await writeGitHubJson(COMMUNITY_POSTS_PATH, nextPosts, 'Publish community post ' + submission.gameName, token);
+        persistAdminToken(token);
+        await refreshGlobalCommunityPosts();
+        clearDraft();
+        if (communityName) communityName.value = '';
+        if (communityCategory) communityCategory.value = 'none';
+        if (communityLink) communityLink.value = '';
+        if (communityNote) communityNote.value = '';
+        renderCommunityPreview();
+        setAdminStatus('Community post published globally.', 'ok');
+      } catch (_) {
+        setAdminStatus('Could not publish the global community post. Check the token scope and repo access.', 'error');
+      }
+    });
     applyFilters();
     restoreDraft();
-    renderCommunityPosts();
+    renderAdminPanel();
+    refreshGlobalCommunityPosts();
     resolveDiscordAuth().then(renderCommunityPreview);
+  }
+
+  async function initChangelogsPage() {
+    const list = byId('changelog-list');
+    const status = byId('changelog-status');
+    if (!list || !status) return;
+    try {
+      const entries = await fetchJsonFile('data/changelogs.json');
+      list.innerHTML = entries.map(function (entry) {
+        return '<article class="changelog-entry">'
+          + '<div class="game-meta"><span class="pill">' + escapeHtml(entry.date) + '</span></div>'
+          + '<h2>' + escapeHtml(entry.title) + '</h2>'
+          + '<ul>' + (entry.items || []).map(function (item) {
+              return '<li>' + escapeHtml(item) + '</li>';
+            }).join('') + '</ul>'
+          + '</article>';
+      }).join('');
+      status.textContent = 'Loaded changelogs.';
+      status.className = 'small status ok';
+    } catch (_) {
+      list.innerHTML = '';
+      status.textContent = 'Could not load changelogs right now.';
+      status.className = 'small status error';
+    }
   }
 
   if (document.body.dataset.page === 'invite') initInvitePage();
   if (document.body.dataset.page === 'menu') initMenuPage();
   if (document.body.dataset.page === 'ps') initPrivateServersPage();
+  if (document.body.dataset.page === 'changelogs') initChangelogsPage();
 })();

@@ -266,6 +266,27 @@ code, .code-block {
   font-size: 22px;
 }
 
+.admin-tools {
+  margin-top: 12px;
+}
+
+.changelog-entry {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.changelog-entry h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.changelog-entry ul {
+  margin: 12px 0 0 18px;
+  color: var(--muted);
+}
+
 .verify-panel {
   margin-top: 18px;
   margin-bottom: 18px;

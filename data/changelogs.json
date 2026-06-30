@@ -1,0 +1,20 @@
+[
+  {
+    "date": "2026-06-30",
+    "title": "Community system and Discord verification",
+    "items": [
+      "Added Discord verification for community private server submissions.",
+      "Added review-based community submission flow for private server share links.",
+      "Added global changelogs route support."
+    ]
+  },
+  {
+    "date": "2026-06-29",
+    "title": "Private servers page improvements",
+    "items": [
+      "Added dedicated /ps page for curated private servers.",
+      "Added search, category filtering, and sorting.",
+      "Improved menu layout and route handling for GitHub Pages."
+    ]
+  }
+]

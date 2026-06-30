@@ -12,11 +12,15 @@ Static GitHub Pages join helper for Roblox public servers and private server lin
   - Roblox game URLs with `privateServerLinkCode=...`
 - Froststrap-style invite parsing from pasted links
 - Simple menu page for generating join links
+- Dedicated private servers page
+- Changelogs page
 
 ## Routes
 
 - `/menu` - manual input page
 - `/invite` - opens a generated join page
+- `/ps` - private servers and community submissions
+- `/changelogs` - website update history
 
 Examples:
 
