@@ -122,6 +122,15 @@
     return url.toString();
   }
 
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   async function copyText(text, successLabel) {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -389,6 +398,8 @@
     const verifiedAvatar = byId('verified-avatar');
     const verifiedName = byId('verified-name');
     const verifiedMeta = byId('verified-meta');
+    const communityPosts = byId('community-posts');
+    const communityEmpty = byId('community-empty');
     let verifiedDiscordUser = null;
     buttons.forEach(function (button) {
       button.addEventListener('click', function () {
@@ -415,6 +426,41 @@
       } catch (_) {}
     }
 
+    function persistDraft() {
+      try {
+        localStorage.setItem('ps.communityDraft', JSON.stringify({
+          gameName: String(communityName && communityName.value || ''),
+          category: String(communityCategory && communityCategory.value || 'grinding'),
+          shareLink: String(communityLink && communityLink.value || ''),
+          note: String(communityNote && communityNote.value || '')
+        }));
+      } catch (_) {}
+    }
+
+    function loadDraft() {
+      try {
+        const raw = localStorage.getItem('ps.communityDraft');
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function restoreDraft() {
+      const draft = loadDraft();
+      if (!draft) return;
+      if (communityName && draft.gameName) communityName.value = draft.gameName;
+      if (communityCategory && draft.category) communityCategory.value = draft.category;
+      if (communityLink && draft.shareLink) communityLink.value = draft.shareLink;
+      if (communityNote && draft.note) communityNote.value = draft.note;
+    }
+
+    function clearDraft() {
+      try {
+        localStorage.removeItem('ps.communityDraft');
+      } catch (_) {}
+    }
+
     function clearVerifiedUser() {
       verifiedDiscordUser = null;
       try {
@@ -429,6 +475,52 @@
       } catch (_) {
         return null;
       }
+    }
+
+    function loadCommunityPosts() {
+      try {
+        const raw = localStorage.getItem('ps.communityPosts');
+        return raw ? JSON.parse(raw) : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function saveCommunityPost(post) {
+      try {
+        const posts = loadCommunityPosts();
+        posts.unshift(post);
+        localStorage.setItem('ps.communityPosts', JSON.stringify(posts.slice(0, 24)));
+      } catch (_) {}
+    }
+
+    function renderCommunityPosts() {
+      if (!communityPosts) return;
+      const posts = loadCommunityPosts();
+      communityPosts.innerHTML = posts.map(function (post) {
+        return '<article class="game-card">'
+          + '<div class="game-meta"><span class="pill">Community</span><span class="pill">' + escapeHtml(post.categoryLabel) + '</span></div>'
+          + '<div class="verified-user" style="margin-top:0;padding-top:0;border-top:none;">'
+          + '<img class="verified-avatar" src="' + escapeHtml(post.submitterAvatar) + '" alt="Submitter avatar" />'
+          + '<div><strong>' + escapeHtml(post.submitterLabel) + '</strong><div class="small">Verified Discord submitter</div></div>'
+          + '</div>'
+          + '<h2>' + escapeHtml(post.gameName) + '</h2>'
+          + '<p>' + escapeHtml(post.note || 'Community-submitted private server.') + '</p>'
+          + '<div class="game-actions">'
+          + '<button class="button" data-share-code="' + escapeHtml(post.shareCode) + '">Join in Roblox</button>'
+          + '<a class="button secondary" href="' + escapeHtml(post.shareLink) + '">Open Share Link</a>'
+          + '</div>'
+          + '</article>';
+      }).join('');
+      const postButtons = communityPosts.querySelectorAll('[data-share-code]');
+      postButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          const code = button.getAttribute('data-share-code') || '';
+          if (!code) return;
+          window.location.href = buildShareLinkDeepLink(code);
+        });
+      });
+      if (communityEmpty) communityEmpty.classList.toggle('hidden', posts.length > 0);
     }
 
     function formatSubmitterLabel(user) {
@@ -597,10 +689,22 @@
     searchInput && searchInput.addEventListener('input', applyFilters);
     categorySelect && categorySelect.addEventListener('change', applyFilters);
     sortSelect && sortSelect.addEventListener('change', applyFilters);
-    communityName && communityName.addEventListener('input', renderCommunityPreview);
-    communityCategory && communityCategory.addEventListener('change', renderCommunityPreview);
-    communityLink && communityLink.addEventListener('input', renderCommunityPreview);
-    communityNote && communityNote.addEventListener('input', renderCommunityPreview);
+    communityName && communityName.addEventListener('input', function () {
+      persistDraft();
+      renderCommunityPreview();
+    });
+    communityCategory && communityCategory.addEventListener('change', function () {
+      persistDraft();
+      renderCommunityPreview();
+    });
+    communityLink && communityLink.addEventListener('input', function () {
+      persistDraft();
+      renderCommunityPreview();
+    });
+    communityNote && communityNote.addEventListener('input', function () {
+      persistDraft();
+      renderCommunityPreview();
+    });
     communityCopy && communityCopy.addEventListener('click', function () {
       const submission = renderCommunityPreview();
       if (!submission.valid) return;
@@ -619,6 +723,22 @@
       const submission = renderCommunityPreview();
       if (!submission.valid) return;
       window.open(buildCommunityIssueUrl(submission), '_blank', 'noopener');
+      saveCommunityPost({
+        submitterLabel: submission.submitterLabel,
+        submitterAvatar: submission.submitterAvatar,
+        gameName: submission.gameName,
+        categoryLabel: submission.categoryLabel,
+        shareCode: submission.shareCode,
+        shareLink: submission.shareLink,
+        note: submission.note
+      });
+      renderCommunityPosts();
+      clearDraft();
+      if (communityName) communityName.value = '';
+      if (communityCategory) communityCategory.value = 'grinding';
+      if (communityLink) communityLink.value = '';
+      if (communityNote) communityNote.value = '';
+      renderCommunityPreview();
       setCommunityStatus('Opened a pre-filled GitHub issue for review.', 'ok');
     });
     discordLogout && discordLogout.addEventListener('click', function () {
@@ -628,6 +748,8 @@
       setCommunityStatus('Logged out from the saved Discord verification on this browser.', 'ok');
     });
     applyFilters();
+    restoreDraft();
+    renderCommunityPosts();
     resolveDiscordAuth().then(renderCommunityPreview);
   }
 

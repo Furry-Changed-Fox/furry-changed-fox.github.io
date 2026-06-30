@@ -291,6 +291,10 @@ code, .code-block {
   margin: 0;
 }
 
+.verify-copy:empty {
+  display: none;
+}
+
 .verify-actions {
   display: flex;
   gap: 10px;
