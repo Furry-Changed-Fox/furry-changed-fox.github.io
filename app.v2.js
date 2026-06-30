@@ -90,6 +90,7 @@
     url.searchParams.set('body', [
       '## Community Private Server Submission',
       '',
+      '**Submitted by:** ' + payload.submitterLabel,
       '**Game name:** ' + payload.gameName,
       '**Category:** ' + payload.categoryLabel,
       '**Private server share link:** ' + payload.shareLink,
@@ -98,6 +99,26 @@
       '',
       '> This was submitted from the /ps community upload form and should only be added after review.'
     ].join('\n'));
+    return url.toString();
+  }
+
+  function getDiscordAvatarUrl(user) {
+    if (!user) return '';
+    if (user.avatar) {
+      return 'https://cdn.discordapp.com/avatars/' + user.id + '/' + user.avatar + '.png?size=128';
+    }
+    const discriminator = Number(user.discriminator || '0');
+    const fallback = Number.isFinite(discriminator) ? discriminator % 5 : 0;
+    return 'https://cdn.discordapp.com/embed/avatars/' + fallback + '.png';
+  }
+
+  function makeDiscordAuthUrl() {
+    const url = new URL('https://discord.com/oauth2/authorize');
+    url.searchParams.set('client_id', '1521410277600661554');
+    url.searchParams.set('response_type', 'token');
+    url.searchParams.set('redirect_uri', 'https://furry-changed-fox.github.io/ps/');
+    url.searchParams.set('scope', 'identify');
+    url.searchParams.set('prompt', 'consent');
     return url.toString();
   }
 
@@ -362,6 +383,13 @@
     const communityStatus = byId('community-status');
     const communitySubmit = byId('community-submit');
     const communityCopy = byId('community-copy');
+    const discordLogin = byId('discord-login');
+    const discordLogout = byId('discord-logout');
+    const verifiedUser = byId('verified-user');
+    const verifiedAvatar = byId('verified-avatar');
+    const verifiedName = byId('verified-name');
+    const verifiedMeta = byId('verified-meta');
+    let verifiedDiscordUser = null;
     buttons.forEach(function (button) {
       button.addEventListener('click', function () {
         const code = button.getAttribute('data-share-code') || '';
@@ -381,6 +409,90 @@
       return option ? option.text : value;
     }
 
+    function persistVerifiedUser(user) {
+      try {
+        localStorage.setItem('ps.discordUser', JSON.stringify(user));
+      } catch (_) {}
+    }
+
+    function clearVerifiedUser() {
+      verifiedDiscordUser = null;
+      try {
+        localStorage.removeItem('ps.discordUser');
+      } catch (_) {}
+    }
+
+    function loadStoredVerifiedUser() {
+      try {
+        const raw = localStorage.getItem('ps.discordUser');
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function formatSubmitterLabel(user) {
+      if (!user) return '';
+      return user.username + ' (' + user.id + ')';
+    }
+
+    function renderVerifiedUser() {
+      const user = verifiedDiscordUser;
+      if (!discordLogin) return;
+      discordLogin.href = makeDiscordAuthUrl();
+      if (!user) {
+        verifiedUser && verifiedUser.classList.add('hidden');
+        discordLogout && discordLogout.classList.add('hidden');
+        return;
+      }
+      if (verifiedName) verifiedName.textContent = formatSubmitterLabel(user);
+      if (verifiedMeta) verifiedMeta.textContent = 'Verified with Discord. Your username, ID, and avatar will be attached to the submission.';
+      if (verifiedAvatar) {
+        verifiedAvatar.src = getDiscordAvatarUrl(user);
+      }
+      verifiedUser && verifiedUser.classList.remove('hidden');
+      discordLogout && discordLogout.classList.remove('hidden');
+    }
+
+    async function resolveDiscordAuth() {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const accessToken = hash.get('access_token');
+      if (!accessToken) {
+        verifiedDiscordUser = loadStoredVerifiedUser();
+        renderVerifiedUser();
+        return;
+      }
+      try {
+        const response = await fetch('https://discord.com/api/users/@me', {
+          headers: {
+            Authorization: 'Bearer ' + accessToken
+          }
+        });
+        if (!response.ok) {
+          throw new Error('Discord verification failed.');
+        }
+        const profile = await response.json();
+        verifiedDiscordUser = {
+          id: profile.id,
+          username: profile.global_name || profile.username || 'Discord User',
+          avatar: profile.avatar || '',
+          discriminator: profile.discriminator || '0'
+        };
+        persistVerifiedUser(verifiedDiscordUser);
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        } else {
+          window.location.hash = '';
+        }
+        renderVerifiedUser();
+        setCommunityStatus('Discord verification complete. Your submission will show your username, Discord ID, and profile picture.', 'ok');
+      } catch (_) {
+        clearVerifiedUser();
+        renderVerifiedUser();
+        setCommunityStatus('Discord verification failed. Try verifying again.', 'error');
+      }
+    }
+
     function getCommunitySubmission() {
       const gameName = String(communityName && communityName.value || '').trim();
       const category = String(communityCategory && communityCategory.value || 'other').trim();
@@ -390,7 +502,9 @@
       const shareCode = normalizePrivateCode(shareLink);
       const isShareUrl = /^https:\/\/www\.roblox\.com\/share\?/i.test(shareLink);
       const hasServerType = /[?&]type=Server(?:&|$)/i.test(shareLink);
-      const valid = !!gameName && !!shareCode && isShareUrl && hasServerType;
+      const submitterLabel = formatSubmitterLabel(verifiedDiscordUser);
+      const submitterAvatar = getDiscordAvatarUrl(verifiedDiscordUser);
+      const valid = !!gameName && !!shareCode && isShareUrl && hasServerType && !!verifiedDiscordUser;
       return {
         gameName: gameName,
         category: category,
@@ -398,6 +512,8 @@
         shareLink: shareLink,
         shareCode: shareCode,
         note: note,
+        submitterLabel: submitterLabel,
+        submitterAvatar: submitterAvatar,
         valid: valid
       };
     }
@@ -409,7 +525,16 @@
         communityPreview.textContent = 'Enter a valid Roblox private server share link to prepare a submission.';
         if (communitySubmit) communitySubmit.disabled = true;
         if (communityCopy) communityCopy.disabled = true;
-        setCommunityStatus('Submissions open a pre-filled GitHub issue for manual review before being added to the public list.');
+        setCommunityStatus(verifiedDiscordUser
+          ? 'Submissions open a pre-filled GitHub issue for manual review before being added to the public list.'
+          : 'Verify with Discord first, then enter a valid Roblox private server share link.');
+        return submission;
+      }
+      if (!verifiedDiscordUser) {
+        communityPreview.textContent = 'Verify with Discord first. After that, your username, Discord ID, and avatar will be attached to the submission.';
+        if (communitySubmit) communitySubmit.disabled = true;
+        if (communityCopy) communityCopy.disabled = true;
+        setCommunityStatus('Discord verification is required before posting a community private server.', 'error');
         return submission;
       }
       if (!submission.valid) {
@@ -420,15 +545,17 @@
         return submission;
       }
       communityPreview.textContent = [
+        'Submitter: ' + submission.submitterLabel,
         'Game: ' + submission.gameName,
         'Category: ' + submission.categoryLabel,
         'Share code: ' + submission.shareCode,
         'Link: ' + submission.shareLink,
+        'Avatar: ' + submission.submitterAvatar,
         submission.note ? 'Note: ' + submission.note : 'Note: (none)'
       ].join('\n');
       if (communitySubmit) communitySubmit.disabled = false;
       if (communityCopy) communityCopy.disabled = false;
-      setCommunityStatus('Valid submission ready. It will be sent for manual review before it appears publicly.', 'ok');
+      setCommunityStatus('Valid verified submission ready. It will be sent for manual review before it appears publicly.', 'ok');
       return submission;
     }
 
@@ -478,10 +605,12 @@
       const submission = renderCommunityPreview();
       if (!submission.valid) return;
       copyText([
+        'Submitter: ' + submission.submitterLabel,
         'Game: ' + submission.gameName,
         'Category: ' + submission.categoryLabel,
         'Share link: ' + submission.shareLink,
         'Share code: ' + submission.shareCode,
+        'Avatar: ' + submission.submitterAvatar,
         'Note: ' + (submission.note || '(none)')
       ].join('\n'), 'Submission copied.');
       setCommunityStatus('Submission copied. You can paste it anywhere if needed.', 'ok');
@@ -492,8 +621,14 @@
       window.open(buildCommunityIssueUrl(submission), '_blank', 'noopener');
       setCommunityStatus('Opened a pre-filled GitHub issue for review.', 'ok');
     });
+    discordLogout && discordLogout.addEventListener('click', function () {
+      clearVerifiedUser();
+      renderVerifiedUser();
+      renderCommunityPreview();
+      setCommunityStatus('Logged out from the saved Discord verification on this browser.', 'ok');
+    });
     applyFilters();
-    renderCommunityPreview();
+    resolveDiscordAuth().then(renderCommunityPreview);
   }
 
   if (document.body.dataset.page === 'invite') initInvitePage();

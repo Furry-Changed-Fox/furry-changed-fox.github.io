@@ -44,6 +44,27 @@
         <h2>Community Uploads</h2>
         <p>Anyone can submit their own private server for review. Only Roblox private server share-link formats are accepted, so random links will be rejected.</p>
 
+        <div class="verify-panel" id="discord-verify-panel">
+          <div class="verify-header">
+            <div>
+              <h3>Discord Verification</h3>
+              <p class="verify-copy">Sign in with Discord before posting so you can see exactly who submitted each private server.</p>
+            </div>
+            <div class="verify-actions">
+              <a class="button" id="discord-login" href="#">Verify with Discord</a>
+              <button class="button secondary hidden" id="discord-logout" type="button">Log out</button>
+            </div>
+          </div>
+
+          <div class="verified-user hidden" id="verified-user">
+            <img id="verified-avatar" alt="Verified Discord avatar" class="verified-avatar" />
+            <div>
+              <strong id="verified-name">Not verified</strong>
+              <div class="small" id="verified-meta">Sign in to attach your Discord identity to your submission.</div>
+            </div>
+          </div>
+        </div>
+
         <div class="stack compact-stack">
           <div class="field">
             <label for="community-game-name">Game name</label>
