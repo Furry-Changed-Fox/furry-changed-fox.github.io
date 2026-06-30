@@ -533,10 +533,12 @@
       if (!discordLogin) return;
       discordLogin.href = makeDiscordAuthUrl();
       if (!user) {
+        discordLogin.classList.remove('hidden');
         verifiedUser && verifiedUser.classList.add('hidden');
         discordLogout && discordLogout.classList.add('hidden');
         return;
       }
+      discordLogin.classList.add('hidden');
       if (verifiedName) verifiedName.textContent = formatSubmitterLabel(user);
       if (verifiedMeta) verifiedMeta.textContent = 'Verified with Discord. Your username, ID, and avatar will be attached to the submission.';
       if (verifiedAvatar) {
@@ -740,6 +742,9 @@
       if (communityNote) communityNote.value = '';
       renderCommunityPreview();
       setCommunityStatus('Opened a pre-filled GitHub issue for review.', 'ok');
+    });
+    discordLogin && discordLogin.addEventListener('click', function () {
+      persistDraft();
     });
     discordLogout && discordLogout.addEventListener('click', function () {
       clearVerifiedUser();
