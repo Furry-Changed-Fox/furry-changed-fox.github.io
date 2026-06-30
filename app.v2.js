@@ -181,6 +181,67 @@
     return response.json();
   }
 
+  async function fetchGitHubIssues(token) {
+    const response = await fetch('https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/issues?state=open&per_page=100', {
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/vnd.github+json'
+      }
+    });
+    if (!response.ok) {
+      throw new Error('GitHub issue fetch failed');
+    }
+    return response.json();
+  }
+
+  async function closeGitHubIssue(issueNumber, token) {
+    const response = await fetch('https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/issues/' + issueNumber, {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ state: 'closed' })
+    });
+    if (!response.ok) {
+      throw new Error('Could not close issue #' + issueNumber);
+    }
+    return response.json();
+  }
+
+  function extractIssueField(body, label) {
+    const pattern = new RegExp('\\*\\*' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':\\*\\*\\s*(.+)', 'i');
+    const match = String(body || '').match(pattern);
+    return match ? match[1].trim() : '';
+  }
+
+  function parseCommunityIssue(issue) {
+    const body = String(issue && issue.body || '');
+    const title = String(issue && issue.title || '');
+    if (!/^Community private server:/i.test(title)) return null;
+    const submitterLabel = extractIssueField(body, 'Submitted by');
+    const gameName = extractIssueField(body, 'Game name');
+    const categoryLabel = extractIssueField(body, 'Category') || 'None';
+    const shareLink = extractIssueField(body, 'Private server share link');
+    const shareCode = extractIssueField(body, 'Share code');
+    const note = extractIssueField(body, 'Note').replace(/^\(none\)$/i, '').trim();
+    const submitterMatch = submitterLabel.match(/^(.+?)\s*\((\d+)\)$/);
+    return {
+      issueNumber: issue.number,
+      submitterLabel: submitterLabel,
+      submitterId: submitterMatch ? submitterMatch[2] : '',
+      submitterName: submitterMatch ? submitterMatch[1] : submitterLabel,
+      gameName: gameName,
+      categoryLabel: categoryLabel,
+      category: categoryLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'none',
+      shareLink: shareLink,
+      shareCode: shareCode,
+      note: note,
+      submitterAvatar: ''
+    };
+  }
+
   function buildDeleteRequestIssueUrl(post) {
     const url = new URL('https://github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/issues/new');
     url.searchParams.set('title', 'Delete community post: ' + post.gameName);
@@ -480,8 +541,11 @@
     const adminClearToken = byId('admin-clear-token');
     const adminPublishPost = byId('admin-publish-post');
     const adminStatus = byId('admin-status');
+    const reviewQueue = byId('review-queue');
+    const reviewEmpty = byId('review-empty');
     let verifiedDiscordUser = null;
     let globalCommunityPosts = [];
+    let pendingReviewIssues = [];
     buttons.forEach(function (button) {
       button.addEventListener('click', function () {
         const code = button.getAttribute('data-share-code') || '';
@@ -616,6 +680,84 @@
       }
     }
 
+    function renderReviewQueue() {
+      if (!reviewQueue) return;
+      reviewQueue.innerHTML = pendingReviewIssues.map(function (entry) {
+        return '<article class="game-card review-card">'
+          + '<div class="game-meta"><span class="pill">Issue #' + escapeHtml(entry.issueNumber) + '</span><span class="pill">' + escapeHtml(entry.categoryLabel) + '</span></div>'
+          + '<h2>' + escapeHtml(entry.gameName || 'Unnamed Submission') + '</h2>'
+          + '<p><strong>' + escapeHtml(entry.submitterLabel || 'Unknown submitter') + '</strong></p>'
+          + '<p>' + escapeHtml(entry.note || 'No note provided.') + '</p>'
+          + '<div class="code-block">' + escapeHtml(entry.shareLink || '') + '</div>'
+          + '<div class="game-actions">'
+          + '<button class="button" data-approve-issue="' + escapeHtml(entry.issueNumber) + '">Approve to Community</button>'
+          + '<a class="button secondary" href="https://github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/issues/' + escapeHtml(entry.issueNumber) + '" target="_blank" rel="noopener">Open Issue</a>'
+          + '</div>'
+          + '</article>';
+      }).join('');
+      const approveButtons = reviewQueue.querySelectorAll('[data-approve-issue]');
+      approveButtons.forEach(function (button) {
+        button.addEventListener('click', async function () {
+          const issueNumber = Number(button.getAttribute('data-approve-issue') || '0');
+          if (!issueNumber) return;
+          const token = String(adminTokenInput && adminTokenInput.value || loadAdminToken()).trim();
+          if (!token) {
+            setAdminStatus('Paste and save a GitHub token first.', 'error');
+            return;
+          }
+          const issue = pendingReviewIssues.find(function (entry) { return entry.issueNumber === issueNumber; });
+          if (!issue) return;
+          try {
+            const nextPosts = [{
+              id: 'issue-' + issue.issueNumber + '-' + Date.now(),
+              submitterId: issue.submitterId,
+              submitterLabel: issue.submitterLabel,
+              submitterAvatar: issue.submitterAvatar,
+              gameName: issue.gameName,
+              categoryLabel: issue.categoryLabel,
+              category: issue.category,
+              shareCode: issue.shareCode,
+              shareLink: issue.shareLink,
+              note: issue.note
+            }].concat(loadCommunityPosts()).slice(0, 100);
+            await writeGitHubJson(COMMUNITY_POSTS_PATH, nextPosts, 'Approve community post from issue #' + issue.issueNumber, token);
+            await closeGitHubIssue(issue.issueNumber, token);
+            persistAdminToken(token);
+            await refreshGlobalCommunityPosts();
+            await refreshReviewQueue();
+            setAdminStatus('Approved issue #' + issue.issueNumber + ' into Community Posts.', 'ok');
+          } catch (_) {
+            setAdminStatus('Could not approve issue #' + issue.issueNumber + '.', 'error');
+          }
+        });
+      });
+      if (reviewEmpty) reviewEmpty.classList.toggle('hidden', pendingReviewIssues.length > 0);
+    }
+
+    async function refreshReviewQueue() {
+      if (!isCommunityAdmin(verifiedDiscordUser)) {
+        pendingReviewIssues = [];
+        renderReviewQueue();
+        return;
+      }
+      const token = String(adminTokenInput && adminTokenInput.value || loadAdminToken()).trim();
+      if (!token) {
+        pendingReviewIssues = [];
+        renderReviewQueue();
+        return;
+      }
+      try {
+        const issues = await fetchGitHubIssues(token);
+        pendingReviewIssues = issues
+          .filter(function (issue) { return !issue.pull_request; })
+          .map(parseCommunityIssue)
+          .filter(Boolean);
+      } catch (_) {
+        pendingReviewIssues = [];
+      }
+      renderReviewQueue();
+    }
+
     async function refreshGlobalCommunityPosts() {
       try {
         globalCommunityPosts = await fetchJsonFile('data/community-posts.json');
@@ -702,6 +844,7 @@
         verifiedUser && verifiedUser.classList.add('hidden');
         discordLogout && discordLogout.classList.add('hidden');
         renderAdminPanel();
+        renderReviewQueue();
         return;
       }
       discordLogin.classList.add('hidden');
@@ -714,6 +857,7 @@
       discordLogout && discordLogout.classList.remove('hidden');
       renderAdminPanel();
       renderCommunityPosts();
+      refreshReviewQueue();
     }
 
     async function resolveDiscordAuth() {
@@ -931,11 +1075,13 @@
       }
       persistAdminToken(token);
       setAdminStatus('GitHub token saved in this browser for admin actions.', 'ok');
+      refreshReviewQueue();
     });
     adminClearToken && adminClearToken.addEventListener('click', function () {
       clearAdminToken();
       if (adminTokenInput) adminTokenInput.value = '';
       setAdminStatus('Saved GitHub token cleared from this browser.', 'ok');
+      refreshReviewQueue();
     });
     adminPublishPost && adminPublishPost.addEventListener('click', async function () {
       if (!isCommunityAdmin(verifiedDiscordUser)) {
@@ -983,7 +1129,10 @@
     restoreDraft();
     renderAdminPanel();
     refreshGlobalCommunityPosts();
-    resolveDiscordAuth().then(renderCommunityPreview);
+    resolveDiscordAuth().then(function () {
+      renderCommunityPreview();
+      refreshReviewQueue();
+    });
   }
 
   async function initChangelogsPage() {

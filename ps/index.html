@@ -147,13 +147,13 @@
         </div>
 
         <p class="small status" id="admin-status">Admin actions use your browser-saved GitHub token to update shared website data.</p>
-      </section>
 
-      <section class="community-panel">
-        <h2>Community Posts</h2>
-        <p>Approved community private servers shown here are shared globally for everyone on the website.</p>
-        <div class="games-grid" id="community-posts"></div>
-        <div class="empty-state" id="community-empty">No community posts are live here yet.</div>
+        <div class="divider"></div>
+
+        <h3>Review Queue</h3>
+        <p class="small">Approve reviewed community submissions from GitHub issues so they become visible for everyone in Community Posts.</p>
+        <div class="games-grid" id="review-queue"></div>
+        <div class="empty-state" id="review-empty">No pending community review requests found.</div>
       </section>
 
       <div class="games-grid" id="ps-grid">
@@ -258,6 +258,13 @@
           </div>
         </article>
       </div>
+
+      <section class="community-panel">
+        <h2>Community Posts</h2>
+        <p>Approved community private servers shown here are shared globally for everyone on the website and appear under your main private server list.</p>
+        <div class="games-grid" id="community-posts"></div>
+        <div class="empty-state" id="community-empty">No community posts are live here yet.</div>
+      </section>
 
       <div class="empty-state hidden" id="ps-empty">No private servers match your search/filter yet.</div>
     </section>

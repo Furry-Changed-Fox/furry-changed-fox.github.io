@@ -287,6 +287,10 @@ code, .code-block {
   color: var(--muted);
 }
 
+.review-card {
+  border: 1px dashed var(--border);
+}
+
 .verify-panel {
   margin-top: 18px;
   margin-bottom: 18px;
